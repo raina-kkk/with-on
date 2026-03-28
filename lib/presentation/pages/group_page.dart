@@ -741,7 +741,7 @@ class _GroupPageState extends State<GroupPage> {
             left: 0,
             right: 0,
             child: AppBanner(
-              titleLeft: '기도 그룹',
+              titleLeft: '중보',
               titleRight: '기도',
               subtitle: '우리의 기도를 켜는 시간',
               onNotification: widget.onNotification,
