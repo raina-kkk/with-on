@@ -728,7 +728,7 @@ class _MyRoomPageState extends State<MyRoomPage> {
     return parts.isEmpty ? '' : '${parts.join(' · ')} ${parts.length == 1 && _statusFilter != null ? '보기' : '검색 중'}';
   }
 
-  // ── 소그룹 새 글 알림 (종 모양) ─────────────────
+  // ── 기도 그룹 새 글 알림 (종 모양) ─────────────────
   Stream<int> _unreadNotificationCountStream() {
     final uid = _uid;
     if (uid == null) return Stream<int>.value(0);
@@ -1024,7 +1024,7 @@ class _MyRoomPageState extends State<MyRoomPage> {
                                           size: 12,
                                           color: AppTheme.primary),
                                       const SizedBox(width: 3),
-                                      Text('소그룹 공유 중',
+                                      Text('기도 그룹 공유 중',
                                           style: Theme.of(context)
                                               .textTheme
                                               .labelSmall
@@ -1070,7 +1070,7 @@ class _MyRoomPageState extends State<MyRoomPage> {
                                         ),
                                         title: const Text('공유 해제'),
                                         content: const Text(
-                                          '이 기도 제목의 소그룹 공유를 해제하시겠어요?\n\'우리들의 손\'에서 삭제됩니다.',
+                                          '이 기도 제목의 기도 그룹 공유를 해제하시겠어요?\n\'우리들의 손\'에서 삭제됩니다.',
                                         ),
                                         actions: [
                                           TextButton(
@@ -1091,7 +1091,7 @@ class _MyRoomPageState extends State<MyRoomPage> {
                                     }
                                   }
                                 : () => _openShareSheetForPrayer(doc),
-                            tooltip: isShared ? '공유 해제하기' : '소그룹에 공유하기',
+                            tooltip: isShared ? '공유 해제하기' : '기도 그룹에 공유하기',
                             icon: Icon(
                               isShared
                                   ? Icons.link_off_rounded
@@ -1139,7 +1139,7 @@ class _MyRoomPageState extends State<MyRoomPage> {
     );
   }
 
-  // ── 소그룹 공유 ────────────────────────────
+  // ── 기도 그룹 공유 ────────────────────────────
   Future<void> _openShareSheetForPrayer(
       QueryDocumentSnapshot<Map<String, dynamic>> prayerDoc) async {
     final uid = _uid;
@@ -1160,10 +1160,10 @@ class _MyRoomPageState extends State<MyRoomPage> {
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              const Text('어느 소그룹과 함께 나눌까요?',
+              const Text('어느 기도 그룹과 함께 나눌까요?',
                   style: TextStyle(fontSize: 18, fontWeight: FontWeight.w600)),
               const SizedBox(height: 8),
-              Text('함께 기도해 줄 소그룹을 선택해 주세요.',
+              Text('함께 기도해 줄 기도 그룹을 선택해 주세요.',
                   style: Theme.of(context)
                       .textTheme
                       .bodyMedium
@@ -1185,7 +1185,7 @@ class _MyRoomPageState extends State<MyRoomPage> {
                     if (snapshot.hasError) {
                       return Padding(
                           padding: const EdgeInsets.all(16),
-                          child: Text('소그룹 정보를 불러오는 중에 잠시 문제가 있었습니다.',
+                          child: Text('기도 그룹 정보를 불러오는 중에 잠시 문제가 있었습니다.',
                               style: Theme.of(context).textTheme.bodyMedium));
                     }
                     final groups = snapshot.data?.docs ?? const [];
@@ -1193,7 +1193,7 @@ class _MyRoomPageState extends State<MyRoomPage> {
                       return Padding(
                           padding: const EdgeInsets.all(16),
                           child: Text(
-                              '아직 함께 기도 나눔을 할 소그룹이 없습니다.\n먼저 소그룹을 만들거나 초대를 받아 참여해 주세요.',
+                              '아직 함께 기도 나눔을 할 기도 그룹이 없습니다.\n먼저 기도 그룹을 만들거나 초대를 받아 참여해 주세요.',
                               style: Theme.of(context).textTheme.bodyMedium));
                     }
                     return ListView.separated(
@@ -1203,7 +1203,7 @@ class _MyRoomPageState extends State<MyRoomPage> {
                       itemBuilder: (context, index) {
                         final groupDoc = groups[index];
                         final name = (groupDoc.data()['name'] as String?) ??
-                            '이름 없는 소그룹';
+                            '이름 없는 기도 그룹';
                         return ListTile(
                           title: Text(name),
                           onTap: () async {
@@ -1251,7 +1251,7 @@ class _MyRoomPageState extends State<MyRoomPage> {
 
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
-            content: Text('소그룹 공유가 해제되었습니다.\n\'우리들의 손\'에서 더 이상 보이지 않습니다.')));
+            content: Text('기도 그룹 공유가 해제되었습니다.\n\'우리들의 손\'에서 더 이상 보이지 않습니다.')));
       }
     } catch (_) {
       if (mounted) {
@@ -1294,7 +1294,7 @@ class _MyRoomPageState extends State<MyRoomPage> {
         'updated_at': now,
       });
 
-      // 소그룹 새 글 알림: 다른 멤버들에게 앱 내 알림 문서 생성 (Spark 플랜 대안)
+      // 기도 그룹 새 글 알림: 다른 멤버들에게 앱 내 알림 문서 생성 (Spark 플랜 대안)
       final groupDoc = await FirebaseFirestore.instance
           .collection('groups')
           .doc(groupId)
@@ -1308,7 +1308,7 @@ class _MyRoomPageState extends State<MyRoomPage> {
         final groupName =
             (gData['name'] as String?)?.trim().isEmpty != true
                 ? (gData['name'] as String?)!.trim()
-                : '소그룹';
+                : '기도 그룹';
         final sharedByNickname = await _fetchNickname();
 
         for (final memberUid in memberUids) {
@@ -1337,7 +1337,7 @@ class _MyRoomPageState extends State<MyRoomPage> {
 
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
-            content: Text('선택하신 소그룹에 기도 제목이 따뜻하게 나누어졌습니다.')));
+            content: Text('선택하신 기도 그룹에 기도 제목이 따뜻하게 나누어졌습니다.')));
       }
     } catch (_) {
       if (mounted) {
@@ -1449,7 +1449,7 @@ class _StatusChip extends StatelessWidget {
   }
 }
 
-// ── 소그룹 새 글 알림 시트 (종 모양 탭 시) ─────
+// ── 기도 그룹 새 글 알림 시트 (종 모양 탭 시) ─────
 class _NotificationsSheet extends StatefulWidget {
   const _NotificationsSheet({required this.uid});
 
@@ -1502,7 +1502,7 @@ class _NotificationsSheetState extends State<_NotificationsSheet> {
                       color: AppTheme.primary, size: 24),
                   const SizedBox(width: 8),
                   Text(
-                    '소그룹 알림',
+                    '기도 그룹 알림',
                     style: Theme.of(context).textTheme.titleMedium?.copyWith(
                           fontWeight: FontWeight.w600,
                         ),
@@ -1545,7 +1545,7 @@ class _NotificationsSheetState extends State<_NotificationsSheet> {
                               size: 48, color: AppTheme.textMedium.withValues(alpha: 0.5)),
                           const SizedBox(height: 12),
                           Text(
-                            '아직 소그룹 알림이 없어요.',
+                            '아직 기도 그룹 알림이 없어요.',
                             style: Theme.of(context)
                                 .textTheme
                                 .bodyMedium
@@ -1572,7 +1572,7 @@ class _NotificationsSheetState extends State<_NotificationsSheet> {
                           : '누군가';
                       final groupName = (data['group_name'] as String?)?.trim().isEmpty != true
                           ? (data['group_name'] as String?)!.trim()
-                          : '소그룹';
+                          : '기도 그룹';
                       final title = (data['prayer_title'] as String?)?.trim().isEmpty != true
                           ? (data['prayer_title'] as String?)!.trim()
                           : '기도 제목';

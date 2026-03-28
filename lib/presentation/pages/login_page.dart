@@ -223,7 +223,7 @@ class _LoginPageState extends State<LoginPage>
                         controller: _nicknameController,
                         decoration: InputDecoration(
                           labelText: '닉네임',
-                          hintText: '소그룹에서 불릴 이름을 정해 주세요.',
+                          hintText: '기도 그룹에서 불릴 이름을 정해 주세요.',
                           border: const OutlineInputBorder(
                             borderRadius:
                                 BorderRadius.all(Radius.circular(16)),

@@ -57,7 +57,7 @@ double _homeSummaryFitFontSize(BuildContext context, double maxWidth, int total)
   return _summaryMainMinFont;
 }
 
-/// HTML 목업 스타일 홈: 서머리 카드 + 나의 기도/소그룹 캐러셀
+/// HTML 목업 스타일 홈: 서머리 카드 + 나의 기도/기도 그룹 캐러셀
 class HomePage extends StatelessWidget {
   const HomePage({
     super.key,
@@ -690,7 +690,7 @@ class _GroupPrayerCarousel extends StatelessWidget {
       children: [
         _SectionHeader(
           icon: Icons.groups_rounded,
-          title: '소그룹 기도',
+          title: '중보 기도',
           onSeeAll: onSeeAll,
         ),
         const SizedBox(height: 8),
@@ -700,7 +700,7 @@ class _GroupPrayerCarousel extends StatelessWidget {
           decoration: AppTheme.cardDecorationFor(context),
           alignment: Alignment.center,
           child: Text(
-            '소그룹에 참여하면\n함께 나눈 기도 제목을 볼 수 있어요.',
+            '기도 그룹에 참여하면\n함께 나눈 기도 제목을 볼 수 있어요.',
             textAlign: TextAlign.center,
             style: TextStyle(fontSize: 14, color: AppTheme.textMedium),
           ),
@@ -774,7 +774,7 @@ class _GroupPrayerCarouselPagedState extends State<_GroupPrayerCarouselPaged> {
               ),
               const SizedBox(width: 8),
               Text(
-                '소그룹 기도',
+                '중보 기도',
                 style: TextStyle(
                   fontSize: 17,
                   fontWeight: FontWeight.w700,
@@ -982,7 +982,7 @@ Future<({String nickname, String groupName})> _fetchNicknameAndGroupName(
       groupName = (groupDoc.data()?['name'] as String?)?.trim() ?? '';
     } catch (_) {}
   }
-  if (groupName.isEmpty) groupName = '(소그룹)';
+  if (groupName.isEmpty) groupName = '(기도 그룹)';
 
   return (nickname: nickname, groupName: groupName);
 }

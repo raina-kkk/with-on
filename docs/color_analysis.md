@@ -14,7 +14,7 @@
    - [홈 (home_page.dart)](#22-홈)
    - [나의 기도 / 새 기도 작성 (my_room_page.dart)](#23-나의-기도--새-기도-작성)
    - [통계 (profile_page.dart)](#24-통계)
-   - [소그룹 (group_page.dart)](#25-소그룹)
+   - [기도 그룹 (group_page.dart)](#25-기도-그룹)
 3. [미사용 Color 변수](#3-미사용-color-변수)
 4. [주요 관찰 사항](#4-주요-관찰-사항)
 
@@ -90,11 +90,11 @@
 | `statusGratitudeBg` | `0xFFE8EAED` | 잠시 멈춤 — 칩 배경 |
 | `statusGratitudeFg` | `0xFF8A9BA3` | 잠시 멈춤 — 칩 전경 |
 
-### 소그룹 / 차트
+### 기도 그룹 / 차트
 
 | 변수명 | Color Code | 설명 |
 |---|---|---|
-| `groupBlue` | `0xFF5C6B75` | 소그룹 섹션 아이콘 ※ textLight와 동일값 |
+| `groupBlue` | `0xFF5C6B75` | 기도 그룹 섹션 아이콘 ※ textLight와 동일값 |
 | `chartPeach` | `0xFF72513E` | 차트 — 기도 중 / 오늘 날짜 |
 | `chartSkyBlue` | `0xFF7A8B95` | 차트 — 기다리는 중 |
 | `chartGreen` | `0xFF4A7C59` | 차트 — 응답 받음 |
@@ -155,9 +155,9 @@
 | 카드 본문 텍스트 | `0xFF232C34` | Light | `textMedium` | app_theme.dart |
 | 탭 활성 인디케이터 | `0xFF232C34` | Light | `primary` | app_theme.dart |
 | 탭 비활성 인디케이터 | `0xFFC7D6D9` | Light | `navInactive` | app_theme.dart |
-| 소그룹 섹션 아이콘 컨테이너 배경 | `0xFF5C6B75` (+alpha) | Light | `groupBlue` | app_theme.dart |
-| 소그룹 아이콘 색상 | `0xFF5C6B75` | Light | `groupBlue` | app_theme.dart |
-| 소그룹 카드 텍스트 | `0xFF232C34` | Light | `textDark` | app_theme.dart |
+| 기도 그룹 섹션 아이콘 컨테이너 배경 | `0xFF5C6B75` (+alpha) | Light | `groupBlue` | app_theme.dart |
+| 기도 그룹 아이콘 색상 | `0xFF5C6B75` | Light | `groupBlue` | app_theme.dart |
+| 기도 그룹 카드 텍스트 | `0xFF232C34` | Light | `textDark` | app_theme.dart |
 | 더보기 버튼 배경 | `0xFFF5F5F5` | Light | `bgDeep` | app_theme.dart |
 | 더보기 버튼 텍스트 | `0xFF232C34` | Light | `textMedium` | app_theme.dart |
 | 기도 카운트 아이콘/텍스트 (활성) | `0xFF232C34` | Light | `primary` | app_theme.dart |
@@ -240,7 +240,7 @@
 
 ---
 
-### 2.5 소그룹
+### 2.5 기도 그룹
 
 > 파일: `lib/presentation/pages/group_page.dart`
 

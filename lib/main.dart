@@ -16,7 +16,7 @@ import 'services/conditional_notification_helper.dart';
 import 'services/notification_service.dart';
 import 'services/account_data_recovery_service.dart';
 
-// ── [MVP: Spark 플랜] 소그룹 실시간 푸시(FCM) 비활성화 ──────────────────────
+// ── [MVP: Spark 플랜] 기도 그룹 실시간 푸시(FCM) 비활성화 ──────────────────────
 // Blaze 전환 후 Cloud Functions로 푸시 발송 시 아래 주석 해제 후 사용.
 // import 'package:firebase_messaging/firebase_messaging.dart';
 // @pragma('vm:entry-point')
@@ -152,7 +152,7 @@ class _AuthGateState extends State<_AuthGate> {
   }
 }
 
-// ── 메인 스캐폴드 (HTML 목업 스타일: 홈 / 나의 기도 / + / 소그룹 / 통계) ─────
+// ── 메인 스캐폴드 (HTML 목업 스타일: 홈 / 나의 기도 / + / 중보 기도 탭 / 통계) ─────
 class MainScaffold extends StatefulWidget {
   const MainScaffold({super.key});
 
@@ -291,7 +291,7 @@ class _MainScaffoldState extends State<MainScaffold> {
               _CenterAddButton(onTap: _onCenterTap),
               _NavItem(
                 icon: Icons.groups_rounded,
-                label: '소그룹',
+                label: '중보 기도',
                 isActive: _currentIndex == 3,
                 onTap: () => setState(() => _currentIndex = 3),
               ),

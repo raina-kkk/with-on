@@ -9,7 +9,7 @@ import '../../core/theme/app_theme.dart';
 import '../../core/utils/week_utils.dart';
 import '../widgets/app_banner.dart';
 
-// ── 소그룹 멤버 시트/제거 (설정 화면에서도 사용) ──
+// ── 기도 그룹 멤버 시트/제거 (설정 화면에서도 사용) ──
 Future<Map<String, String>> _fetchGroupMemberNicknames(
     List<String> uids) async {
   final result = <String, String>{};
@@ -49,7 +49,7 @@ Future<void> _removeMemberFromGroup({
     if (context.mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
-          content: Text('선택하신 멤버를 소그룹에서 조용히 내보냈습니다.'),
+          content: Text('선택하신 멤버를 기도 그룹에서 조용히 내보냈습니다.'),
         ),
       );
     }
@@ -86,7 +86,7 @@ void _openGroupMemberSheet({
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
-              canManage ? '소그룹 멤버 관리' : '소그룹 멤버 목록',
+              canManage ? '기도 그룹 멤버 관리' : '기도 그룹 멤버 목록',
               style: const TextStyle(
                 fontSize: 18,
                 fontWeight: FontWeight.w600,
@@ -96,7 +96,7 @@ void _openGroupMemberSheet({
             Text(
               canManage
                   ? '함께하고 있는 손길들을 조심스럽게 관리할 수 있습니다.\n필요할 때에만 신중하게 사용해 주세요.'
-                  : '함께 기도하고 있는 소그룹 멤버들입니다.',
+                  : '함께 기도하고 있는 기도 그룹 멤버들입니다.',
               style: Theme.of(ctx).textTheme.bodyMedium?.copyWith(
                     color: AppTheme.textMedium,
                   ),
@@ -143,7 +143,7 @@ void _openGroupMemberSheet({
                           overflow: TextOverflow.ellipsis,
                         ),
                         subtitle: isOwnerRow
-                            ? const Text('이 소그룹의 관리자입니다.')
+                            ? const Text('이 기도 그룹의 관리자입니다.')
                             : null,
                         trailing: canManage && !isOwnerRow
                             ? IconButton(
@@ -231,7 +231,7 @@ class _GroupPageState extends State<GroupPage> {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               const Text(
-                '새 소그룹을 만들어 볼까요?',
+                '새 기도 그룹을 만들어 볼까요?',
                 style: TextStyle(
                   fontSize: 18,
                   fontWeight: FontWeight.w600,
@@ -241,7 +241,7 @@ class _GroupPageState extends State<GroupPage> {
               TextField(
                 controller: nameController,
                 decoration: const InputDecoration(
-                  labelText: '소그룹 이름',
+                  labelText: '기도 그룹 이름',
                   hintText: '예: 청년부 3조, 화요 기도 모임',
                   border: OutlineInputBorder(
                     borderRadius: BorderRadius.all(Radius.circular(16)),
@@ -263,7 +263,7 @@ class _GroupPageState extends State<GroupPage> {
                       if (name.isEmpty) {
                         ScaffoldMessenger.of(context).showSnackBar(
                           const SnackBar(
-                            content: Text('소그룹 이름을 한 줄만이라도 적어 주시면 감사하겠습니다.'),
+                            content: Text('기도 그룹 이름을 한 줄만이라도 적어 주시면 감사하겠습니다.'),
                           ),
                         );
                         return;
@@ -278,7 +278,7 @@ class _GroupPageState extends State<GroupPage> {
                         _selectedGroupId = groupId;
                       });
                     },
-                    child: const Text('소그룹 만들기'),
+                    child: const Text('기도 그룹 만들기'),
                   ),
                 ],
               ),
@@ -323,7 +323,7 @@ class _GroupPageState extends State<GroupPage> {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text(
-              '소그룹이 만들어졌습니다.\n초대 코드는 $inviteCode 입니다.',
+              '기도 그룹이 만들어졌습니다.\n초대 코드는 $inviteCode 입니다.',
             ),
           ),
         );
@@ -334,7 +334,7 @@ class _GroupPageState extends State<GroupPage> {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
-            content: Text('소그룹을 만드는 중에 잠시 어려움이 있었습니다.\n조금 뒤에 다시 시도해 주시면 감사하겠습니다.'),
+            content: Text('기도 그룹을 만드는 중에 잠시 어려움이 있었습니다.\n조금 뒤에 다시 시도해 주시면 감사하겠습니다.'),
           ),
         );
       }
@@ -448,7 +448,7 @@ class _GroupPageState extends State<GroupPage> {
                         });
                       }
                     },
-                    child: const Text('소그룹 참여하기'),
+                    child: const Text('기도 그룹 참여하기'),
                   ),
                 ],
               ),
@@ -474,7 +474,7 @@ class _GroupPageState extends State<GroupPage> {
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(
-              content: Text('해당 초대 코드를 가진 소그룹을 찾지 못했습니다.\n코드를 다시 한 번만 확인해 주시겠어요?'),
+              content: Text('해당 초대 코드를 가진 기도 그룹을 찾지 못했습니다.\n코드를 다시 한 번만 확인해 주시겠어요?'),
             ),
           );
         }
@@ -503,7 +503,7 @@ class _GroupPageState extends State<GroupPage> {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('소그룹 "${groupDoc.data()['name'] ?? ''}" 에 함께 하게 되었습니다.'),
+            content: Text('기도 그룹 "${groupDoc.data()['name'] ?? ''}" 에 함께 하게 되었습니다.'),
           ),
         );
       }
@@ -513,7 +513,7 @@ class _GroupPageState extends State<GroupPage> {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
-            content: Text('소그룹에 참여하는 중에 잠시 어려움이 있었습니다.\n조금 뒤에 다시 시도해 주시면 감사하겠습니다.'),
+            content: Text('기도 그룹에 참여하는 중에 잠시 어려움이 있었습니다.\n조금 뒤에 다시 시도해 주시면 감사하겠습니다.'),
           ),
         );
       }
@@ -532,7 +532,7 @@ class _GroupPageState extends State<GroupPage> {
     if (isOwner && memberCount > 1) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
-          content: Text('아직 함께하고 있는 소그룹원이 있어서,\n관리자는 바로 나갈 수 없습니다.\n먼저 멤버 관리에서 다른 분들을 내보내 주세요.'),
+          content: Text('아직 함께하고 있는 기도 그룹원이 있어서,\n관리자는 바로 나갈 수 없습니다.\n먼저 멤버 관리에서 다른 분들을 내보내 주세요.'),
         ),
       );
       return;
@@ -569,14 +569,14 @@ class _GroupPageState extends State<GroupPage> {
 
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
-          content: Text('소그룹에서 조용히 나왔습니다.\n함께했던 시간을 기억하며, 앞으로도 주님 안에서 평안하시길 기도합니다.'),
+          content: Text('기도 그룹에서 조용히 나왔습니다.\n함께했던 시간을 기억하며, 앞으로도 주님 안에서 평안하시길 기도합니다.'),
         ),
       );
     } catch (_) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
-            content: Text('소그룹을 나오는 중에 잠시 어려움이 있었습니다.\n조금 뒤에 다시 시도해 주시면 감사하겠습니다.'),
+            content: Text('기도 그룹을 나오는 중에 잠시 어려움이 있었습니다.\n조금 뒤에 다시 시도해 주시면 감사하겠습니다.'),
           ),
         );
       }
@@ -673,7 +673,7 @@ class _GroupPageState extends State<GroupPage> {
                                   : null,
                               behavior: HitTestBehavior.opaque,
                               child: Tooltip(
-                                message: '소그룹 설정',
+                                message: '기도 그룹 설정',
                                 child: Padding(
                                   padding: const EdgeInsets.symmetric(
                                       horizontal: 12, vertical: 10),
@@ -699,8 +699,8 @@ class _GroupPageState extends State<GroupPage> {
                           child: Padding(
                             padding: const EdgeInsets.all(24),
                             child: Text(
-                              '아직 함께하는 소그룹이 없거나,\n선택된 소그룹이 없습니다.\n\n'
-                              '상단에서 소그룹을 선택하시거나,\n새로운 소그룹을 만들어 보셔도 좋습니다.',
+                              '아직 함께하는 기도 그룹이 없거나,\n선택된 기도 그룹이 없습니다.\n\n'
+                              '상단에서 기도 그룹을 선택하시거나,\n새로운 기도 그룹을 만들어 보셔도 좋습니다.',
                               textAlign: TextAlign.center,
                               style: Theme.of(context).textTheme.bodyMedium,
                             ),
@@ -741,7 +741,7 @@ class _GroupPageState extends State<GroupPage> {
             left: 0,
             right: 0,
             child: AppBanner(
-              titleLeft: '소그룹',
+              titleLeft: '기도 그룹',
               titleRight: '기도',
               subtitle: '우리의 기도를 켜는 시간',
               onNotification: widget.onNotification,
@@ -755,7 +755,7 @@ class _GroupPageState extends State<GroupPage> {
   }
 }
 
-// ── 소그룹 설정 랜딩 (새 소그룹 만들기 / 참여하기 / 관리하기) ─────
+// ── 기도 그룹 설정 랜딩 (새 기도 그룹 만들기 / 참여하기 / 관리하기) ─────
 class GroupSettingsLandingPage extends StatelessWidget {
   const GroupSettingsLandingPage({
     super.key,
@@ -774,7 +774,7 @@ class GroupSettingsLandingPage extends StatelessWidget {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('소그룹 설정'),
+        title: const Text('기도 그룹 설정'),
         backgroundColor: Colors.transparent,
         foregroundColor: AppTheme.textDark,
       ),
@@ -793,11 +793,11 @@ class GroupSettingsLandingPage extends StatelessWidget {
               child: ListTile(
                 leading: Icon(Icons.group_add_rounded, color: Theme.of(context).colorScheme.primary, size: 24),
                 title: const Text(
-                  '새 소그룹 만들기',
+                  '새 기도 그룹 만들기',
                   style: TextStyle(fontWeight: FontWeight.w600),
                 ),
                 subtitle: Text(
-                  '새로운 소그룹을 만들어 함께 기도해 보세요.',
+                  '새로운 기도 그룹을 만들어 함께 기도해 보세요.',
                   style: Theme.of(context).textTheme.bodySmall?.copyWith(color: AppTheme.textMedium),
                 ),
                 trailing: const Icon(Icons.chevron_right_rounded, color: AppTheme.textMedium),
@@ -817,11 +817,11 @@ class GroupSettingsLandingPage extends StatelessWidget {
               child: ListTile(
                 leading: Icon(Icons.qr_code_2_rounded, color: Theme.of(context).colorScheme.primary, size: 24),
                 title: const Text(
-                  '새 소그룹 참여하기',
+                  '새 기도 그룹 참여하기',
                   style: TextStyle(fontWeight: FontWeight.w600),
                 ),
                 subtitle: Text(
-                  '초대 코드로 이미 있는 소그룹에 참여해 보세요.',
+                  '초대 코드로 이미 있는 기도 그룹에 참여해 보세요.',
                   style: Theme.of(context).textTheme.bodySmall?.copyWith(color: AppTheme.textMedium),
                 ),
                 trailing: const Icon(Icons.chevron_right_rounded, color: AppTheme.textMedium),
@@ -847,11 +847,11 @@ class GroupSettingsLandingPage extends StatelessWidget {
               child: ListTile(
                 leading: Icon(Icons.tune_rounded, color: Theme.of(context).colorScheme.primary, size: 24),
                 title: const Text(
-                  '소그룹 관리하기',
+                  '기도 그룹 관리하기',
                   style: TextStyle(fontWeight: FontWeight.w600),
                 ),
                 subtitle: Text(
-                  '참여 중인 소그룹 목록과 순서를 관리합니다.',
+                  '참여 중인 기도 그룹 목록과 순서를 관리합니다.',
                   style: Theme.of(context).textTheme.bodySmall?.copyWith(color: AppTheme.textMedium),
                 ),
                 trailing: const Icon(Icons.chevron_right_rounded, color: AppTheme.textMedium),
@@ -864,7 +864,7 @@ class GroupSettingsLandingPage extends StatelessWidget {
   }
 }
 
-// ── 참여중인 소그룹 목록 (길게 눌러 순서 변경, 짧게 눌러 개별 설정) ─────
+// ── 참여중인 기도 그룹 목록 (길게 눌러 순서 변경, 짧게 눌러 개별 설정) ─────
 class _GroupManagePage extends StatefulWidget {
   const _GroupManagePage({
     required this.uid,
@@ -883,7 +883,7 @@ class _GroupManagePageState extends State<_GroupManagePage> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('참여중인 소그룹'),
+        title: const Text('참여중인 기도 그룹'),
         backgroundColor: Colors.transparent,
         foregroundColor: AppTheme.textDark,
       ),
@@ -900,7 +900,7 @@ class _GroupManagePageState extends State<_GroupManagePage> {
               child: Padding(
                 padding: const EdgeInsets.all(24),
                 child: Text(
-                  '참여 중인 소그룹이 없습니다.\n소그룹 설정에서 새 소그룹을 만들거나 참여해 보세요.',
+                  '참여 중인 기도 그룹이 없습니다.\n기도 그룹 설정에서 새 기도 그룹을 만들거나 참여해 보세요.',
                   textAlign: TextAlign.center,
                   style: Theme.of(context).textTheme.bodyMedium?.copyWith(color: AppTheme.textMedium),
                 ),
@@ -956,7 +956,7 @@ class _GroupManagePageState extends State<_GroupManagePage> {
                   final data = doc.data();
                   final name = (data['name'] as String?)?.trim().isNotEmpty == true
                       ? (data['name'] as String).trim()
-                      : '소그룹';
+                      : '기도 그룹';
                   final groupId = doc.id;
                   return Padding(
                     key: ValueKey(groupId),
@@ -1015,7 +1015,7 @@ class _GroupManagePageState extends State<_GroupManagePage> {
   }
 }
 
-// ── 소그룹 설정 화면 공통 카드 래퍼 ─────────────────────────────────────
+// ── 기도 그룹 설정 화면 공통 카드 래퍼 ─────────────────────────────────────
 Widget _buildSettingsCard({
   required BuildContext context,
   required IconData icon,
@@ -1094,7 +1094,7 @@ Widget _buildSettingsCard({
   return card;
 }
 
-// ── 소그룹 설정 화면 (개별: 이름수정/초대코드/멤버/나가기) ─────────────────────
+// ── 기도 그룹 설정 화면 (개별: 이름수정/초대코드/멤버/나가기) ─────────────────────
 class GroupSettingsPage extends StatelessWidget {
   const GroupSettingsPage({
     super.key,
@@ -1117,7 +1117,7 @@ class GroupSettingsPage extends StatelessWidget {
       builder: (context, snapshot) {
         if (!snapshot.hasData || !snapshot.data!.exists) {
           return Scaffold(
-            appBar: AppBar(title: const Text('소그룹 설정')),
+            appBar: AppBar(title: const Text('기도 그룹 설정')),
             body: const Center(child: CircularProgressIndicator()),
           );
         }
@@ -1126,7 +1126,7 @@ class GroupSettingsPage extends StatelessWidget {
         final actualName =
             (data['name'] as String?)?.trim().isNotEmpty == true
                 ? (data['name'] as String).trim()
-                : '소그룹';
+                : '기도 그룹';
         final inviteCode = (data['invite_code'] as String?) ?? '';
         final ownerUid = data['owner_uid'] as String? ?? '';
         final memberUids = (data['member_uids'] as List<dynamic>?)
@@ -1233,12 +1233,12 @@ class GroupSettingsPage extends StatelessWidget {
                 },
               ),
               const SizedBox(height: 48),
-              // 소그룹 나가기
+              // 기도 그룹 나가기
               _buildSettingsCard(
                 context: context,
                 icon: Icons.logout_rounded,
-                title: '이 소그룹 나가기',
-                subtitle: '이 소그룹의 기도 제목 목록에 더 이상 접근할 수 없습니다.',
+                title: '이 기도 그룹 나가기',
+                subtitle: '이 기도 그룹의 기도 제목 목록에 더 이상 접근할 수 없습니다.',
                 iconColor: AppTheme.errorRed,
                 cardColor: AppTheme.errorRedBg,
                 titleColor: AppTheme.errorRed,
@@ -1251,9 +1251,9 @@ class GroupSettingsPage extends StatelessWidget {
                       shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(20),
                       ),
-                      title: const Text('소그룹을 나가시겠어요?'),
+                      title: const Text('기도 그룹을 나가시겠어요?'),
                       content: const Text(
-                          '나가시면 이 소그룹의 기도 제목 목록에 더 이상 접근할 수 없습니다.\n'
+                          '나가시면 이 기도 그룹의 기도 제목 목록에 더 이상 접근할 수 없습니다.\n'
                           '함께했던 시간을 기억하며, 앞으로도 주님 안에서 평안하시길 기도합니다.'),
                       actions: [
                         TextButton(
@@ -1286,7 +1286,7 @@ class GroupSettingsPage extends StatelessWidget {
   }
 }
 
-// ── 이름 수정 카드 (소그룹 이름·사용자 닉네임 개인 표시 오버라이드) ─────
+// ── 이름 수정 카드 (기도 그룹 이름·사용자 닉네임 개인 표시 오버라이드) ─────
 class _NameEditCard extends StatelessWidget {
   const _NameEditCard({
     required this.groupId,
@@ -1362,8 +1362,8 @@ class _NameEditCard extends StatelessWidget {
               TextField(
                 controller: groupController,
                 decoration: const InputDecoration(
-                  labelText: '소그룹 이름',
-                  hintText: '이 소그룹을 나만 이렇게 부르기',
+                  labelText: '기도 그룹 이름',
+                  hintText: '이 기도 그룹을 나만 이렇게 부르기',
                   border: OutlineInputBorder(
                     borderRadius: BorderRadius.all(Radius.circular(16)),
                   ),
@@ -1374,7 +1374,7 @@ class _NameEditCard extends StatelessWidget {
                 controller: nameController,
                 decoration: const InputDecoration(
                   labelText: '내 이름',
-                  hintText: '이 소그룹에서 나를 이렇게 부르기',
+                  hintText: '이 기도 그룹에서 나를 이렇게 부르기',
                   border: OutlineInputBorder(
                     borderRadius: BorderRadius.all(Radius.circular(16)),
                   ),
@@ -1585,7 +1585,7 @@ class _GroupSelector extends StatelessWidget {
       builder: (context, snapshot) {
         if (snapshot.hasError) {
           return Text(
-            '소그룹 정보를 불러오는 중입니다. 잠시만 기다려 주세요.',
+            '기도 그룹 정보를 불러오는 중입니다. 잠시만 기다려 주세요.',
             style: Theme.of(context)
                 .textTheme
                 .bodyMedium
@@ -1602,7 +1602,7 @@ class _GroupSelector extends StatelessWidget {
                 child: CircularProgressIndicator(strokeWidth: 2),
               ),
               SizedBox(width: 8),
-              Text('소그룹을 불러오는 중입니다...'),
+              Text('기도 그룹을 불러오는 중입니다...'),
             ],
           );
         }
@@ -1615,7 +1615,7 @@ class _GroupSelector extends StatelessWidget {
         }
         if (groups.isEmpty) {
           return Text(
-            '아직 함께하는 소그룹이 없습니다.',
+            '아직 함께하는 기도 그룹이 없습니다.',
             style: Theme.of(context)
                 .textTheme
                 .bodyMedium
@@ -1635,7 +1635,7 @@ class _GroupSelector extends StatelessWidget {
           (g) => g.id == currentSelectedId,
           orElse: () => groups.first,
         ).data()['name'] as String?) ??
-            '이름 없는 소그룹';
+            '이름 없는 기도 그룹';
 
         return Row(
           crossAxisAlignment: CrossAxisAlignment.center,
@@ -1692,7 +1692,7 @@ class _GroupSelector extends StatelessWidget {
               IconButton(
                 onPressed: () => onSettingsTap!(currentSelectedId),
                 icon: const Icon(Icons.settings_rounded),
-                tooltip: '소그룹 설정',
+                tooltip: '기도 그룹 설정',
                 style: IconButton.styleFrom(
                   foregroundColor: AppTheme.textMedium,
                   backgroundColor: Colors.white,
@@ -1779,7 +1779,7 @@ class _GroupSelectBottomSheetState extends State<_GroupSelectBottomSheet> {
                 children: [
                   const Expanded(
                     child: Text(
-                      '소그룹 선택',
+                      '기도 그룹 선택',
                       style: TextStyle(
                         fontSize: 18,
                         fontWeight: FontWeight.w700,
@@ -1804,7 +1804,7 @@ class _GroupSelectBottomSheetState extends State<_GroupSelectBottomSheet> {
               ),
               const SizedBox(height: 4),
               const Text(
-                '함께 기도할 소그룹을 선택하세요.',
+                '함께 기도할 기도 그룹을 선택하세요.',
                 style: TextStyle(
                   fontSize: 12,
                   color: AppTheme.textMedium,
@@ -1837,7 +1837,7 @@ class _GroupSelectBottomSheetState extends State<_GroupSelectBottomSheet> {
                     final doc = filtered[index];
                     final data = doc.data();
                     final name =
-                        (data['name'] as String?) ?? '이름 없는 소그룹';
+                        (data['name'] as String?) ?? '이름 없는 기도 그룹';
                     final memberUids =
                         (data['member_uids'] as List<dynamic>?) ?? const [];
                     final memberCount = memberUids.length;
@@ -1999,7 +1999,7 @@ class _GroupPrayersList extends StatelessWidget {
                   padding: const EdgeInsets.all(24),
                   child: Text(
                     '이번 주에 공유된 기도 제목이 없습니다.\n'
-                    '나의 상황을 소그룹에 기도 요청 해보세요.',
+                    '나의 상황을 기도 그룹에 기도 요청 해보세요.',
                     textAlign: TextAlign.center,
                     style: Theme.of(context).textTheme.bodyMedium,
                   ),

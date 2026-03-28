@@ -65,7 +65,7 @@ class AppTheme {
   static const Color statusGratitudeBg = Color(0xFFE8EAED);
   static const Color statusGratitudeFg = Color(0xFF8A9BA3);
 
-  // ── 소그룹/차트 (Light 톤) ──
+  // ── 기도 그룹/차트 (Light 톤) ──
   static const Color groupBlue = Color(0xFF5C6B75);
   static const Color chartPeach = Color(0xFF72513E);
   static const Color chartSkyBlue = Color(0xFF7A8B95);

@@ -148,7 +148,7 @@ class _ProfilePageState extends State<ProfilePage> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
-              '소그룹에서 보여지는 이름을 변경합니다.',
+              '기도 그룹에서 보여지는 이름을 변경합니다.',
               style: Theme.of(ctx).textTheme.bodySmall?.copyWith(
                     color: AppTheme.textLight,
                   ),
@@ -434,7 +434,7 @@ class _ProfilePageState extends State<ProfilePage> {
               ),
               _ProfileNavItem(
                 icon: Icons.groups_rounded,
-                label: '소그룹',
+                label: '중보 기도',
                 isActive: widget.currentIndex == 3,
                 onTap: () => _onTapNav(3),
               ),
@@ -1035,14 +1035,14 @@ class _StatsPageState extends State<StatsPage> {
       final statusCounts = List<int>.filled(5, 0);
 
       // streak 및 최신 7일 "참여"를 구성하기 위한 날짜 집합
-      // (개인: 새 기도제목 작성 / 비공유 카드: 기도손 클릭 / 소그룹 카드: 기도손 클릭)
+      // (개인: 새 기도제목 작성 / 비공유 카드: 기도손 클릭 / 기도 그룹 카드: 기도손 클릭)
       final participationDays = <DateTime>{};
 
       // 총 참여(=새 기도제목 + 기도손 클릭 수) 계산
       int personalClickCountTotal = 0;
       int groupClickCountTotal = 0;
 
-      // 소그룹 top 섹션/멤버 top 섹션 계산용
+      // 기도 그룹 top 섹션/멤버 top 섹션 계산용
       final Map<String, int> groupHoldTotalByGroupId = <String, int>{};
       final Map<String, int> memberHoldTotalByOwnerUid = <String, int>{};
       final List<({String prayerId, int holdCount})> last7GroupPrayers = [];
@@ -1093,7 +1093,7 @@ class _StatsPageState extends State<StatsPage> {
           .where('held_by_uids', arrayContains: uid)
           .get();
 
-      // 소그룹 기도손 클릭 수 집계 (최근 7일/전체/스펙(멤버 top, 소그룹 top)에 공통으로 사용)
+      // 기도 그룹 기도손 클릭 수 집계 (최근 7일/전체/스펙(멤버 top, 기도 그룹 top)에 공통으로 사용)
       final Set<String> last7PrayerIdsForOwners = <String>{};
       for (final doc in holdSnap.docs) {
         final data = doc.data();
@@ -1133,7 +1133,7 @@ class _StatsPageState extends State<StatsPage> {
         cursor = cursor.subtract(const Duration(days: 1));
       }
 
-      // 사용자의 소그룹 여부/소그룹 top3 준비
+      // 사용자의 기도 그룹 여부/기도 그룹 top3 준비
       final userDoc = await FirebaseFirestore.instance.collection('users').doc(uid).get();
       final groupIds = (userDoc.data()?['group_ids'] as List<dynamic>?)
               ?.map((e) => e.toString())
@@ -1154,13 +1154,13 @@ class _StatsPageState extends State<StatsPage> {
           final name = (groupSnap.data()?['name'] as String?)?.trim();
           topGroups.add(_TopGroup(
             groupId: e.key,
-            name: (name?.isNotEmpty == true) ? name! : '소그룹',
+            name: (name?.isNotEmpty == true) ? name! : '기도 그룹',
             totalHoldClicks: e.value,
           ));
         }
       }
 
-      // 내가 많이 기도한 멤버 top3 준비 (최근 7일 소그룹 카드 중 '다른 멤버'의 기도손 클릭 합)
+      // 내가 많이 기도한 멤버 top3 준비 (최근 7일 기도 그룹 카드 중 '다른 멤버'의 기도손 클릭 합)
       final Map<String, ({String ownerUid, String nickname})> prayerIdToOwner = {};
       if (hasAnyGroup && last7PrayerIdsForOwners.isNotEmpty) {
         final ids = last7PrayerIdsForOwners.toList();
@@ -1542,7 +1542,7 @@ class _StatsPageState extends State<StatsPage> {
                       ),
 
                       const SizedBox(height: 20),
-                      // 최근 7일 소그룹 top3
+                      // 최근 7일 기도 그룹 top3
                       Container(
                         padding: const EdgeInsets.all(16),
                         decoration: BoxDecoration(
@@ -1562,7 +1562,7 @@ class _StatsPageState extends State<StatsPage> {
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             const Text(
-                              '최근 7일 기도의 등불이 밝은 소그룹 (Top 3)',
+                              '최근 7일 기도의 등불이 밝은 기도 그룹 (Top 3)',
                               style: TextStyle(
                                 fontSize: 12,
                                 color: AppTheme.textLight,
@@ -1572,7 +1572,7 @@ class _StatsPageState extends State<StatsPage> {
                             const SizedBox(height: 10),
                             if (!_hasAnyGroup)
                               const Text(
-                                '함께 기도할 소그룹 모임을 시작해 보세요',
+                                '함께 기도할 기도 그룹 모임을 시작해 보세요',
                                 style: TextStyle(
                                   fontSize: 13,
                                   color: AppTheme.textMedium,
@@ -1581,7 +1581,7 @@ class _StatsPageState extends State<StatsPage> {
                               )
                             else if (_topGroups.isEmpty)
                               const Text(
-                                '최근 7일에 소그룹 기도손 클릭이 아직 없어요.',
+                                '최근 7일에 기도 그룹 기도손 클릭이 아직 없어요.',
                                 style: TextStyle(
                                   fontSize: 13,
                                   color: AppTheme.textMedium,
@@ -1683,7 +1683,7 @@ class _StatsPageState extends State<StatsPage> {
                             const SizedBox(height: 10),
                             if (!_hasAnyGroup)
                               const Text(
-                                '소그룹이 없어서 집계할 멤버가 없어요.',
+                                '기도 그룹이 없어서 집계할 멤버가 없어요.',
                                 style: TextStyle(
                                   fontSize: 13,
                                   color: AppTheme.textMedium,

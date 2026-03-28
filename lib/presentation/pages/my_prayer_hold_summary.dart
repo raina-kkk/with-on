@@ -4,7 +4,7 @@ import 'package:flutter/material.dart';
 
 import '../../core/theme/app_theme.dart';
 
-/// 나의 기도 카드 우측 하단 "기도 손 + 숫자". 개인 참여(비공유) + 소그룹 참여 합산.
+/// 나의 기도 카드 우측 하단 "기도 손 + 숫자". 개인 참여(비공유) + 기도 그룹 참여 합산.
 class MyPrayerHoldSummary extends StatelessWidget {
   const MyPrayerHoldSummary({super.key, required this.prayerId});
 
