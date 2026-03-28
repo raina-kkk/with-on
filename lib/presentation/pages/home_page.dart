@@ -5,6 +5,58 @@ import 'package:flutter/material.dart';
 import '../../core/theme/app_theme.dart';
 import '../widgets/app_banner.dart';
 
+const _summaryMainMaxFont = 17.0;
+const _summaryMainMinFont = 11.0;
+
+/// 카드 가로 너비에 맞춰 1·2줄에 동일한 [fontSize]를 쓰되, 둘째 문장이 한 줄에 들어가도록 축소한다.
+double _homeSummaryFitFontSize(BuildContext context, double maxWidth, int total) {
+  if (maxWidth <= 0) return _summaryMainMaxFont;
+  final textScaler = MediaQuery.textScalerOf(context);
+  const line1 = '혼자가 아니에요.';
+
+  TextStyle baseStyle(double fs) => TextStyle(
+        fontSize: fs,
+        height: 1.8,
+        color: Colors.white,
+        fontFamily: 'NotoSerifKR',
+        fontWeight: FontWeight.w400,
+      );
+
+  InlineSpan line2Span(double fs) => TextSpan(
+        style: baseStyle(fs),
+        children: [
+          const TextSpan(text: '당신을 향한 기도가 '),
+          TextSpan(
+            text: '$total번',
+            style: TextStyle(
+              color: const Color(0xFFFFD966),
+              fontWeight: FontWeight.w700,
+              fontSize: fs,
+              height: 1.8,
+              fontFamily: 'NotoSerifKR',
+            ),
+          ),
+          const TextSpan(text: ' 쌓이고 있어요.'),
+        ],
+      );
+
+  double widthOf(InlineSpan span) {
+    final p = TextPainter(
+      text: span,
+      textDirection: TextDirection.ltr,
+      textScaler: textScaler,
+    )..layout(maxWidth: double.infinity);
+    return p.size.width;
+  }
+
+  for (var fs = _summaryMainMaxFont; fs >= _summaryMainMinFont; fs -= 0.25) {
+    final w1 = widthOf(TextSpan(text: line1, style: baseStyle(fs)));
+    final w2 = widthOf(line2Span(fs));
+    if (w1 <= maxWidth && w2 <= maxWidth) return fs;
+  }
+  return _summaryMainMinFont;
+}
+
 /// HTML 목업 스타일 홈: 서머리 카드 + 나의 기도/소그룹 캐러셀
 class HomePage extends StatelessWidget {
   const HomePage({
@@ -28,13 +80,16 @@ class HomePage extends StatelessWidget {
 
     return Scaffold(
       backgroundColor: Theme.of(context).scaffoldBackgroundColor,
-      appBar: AppBanner(
-        titleLeft: 'With',
-        titleRight: 'On',
-        subtitle: '함께 기도를 켜는 시간',
-        onNotification: onNotification,
-        onProfile: onNavigateToProfile,
-        notificationCount: notificationCount,
+      appBar: PreferredSize(
+        preferredSize: Size.fromHeight(AppBanner.totalHeightFor(context)),
+        child: AppBanner(
+          titleLeft: 'With',
+          titleRight: 'On',
+          subtitle: '함께 기도를 켜는 시간',
+          onNotification: onNotification,
+          onProfile: onNavigateToProfile,
+          notificationCount: notificationCount,
+        ),
       ),
       body: uid == null
           ? const Center(child: Text('로그인 후 이용해 주세요.'))
@@ -114,32 +169,46 @@ class _SummaryCard extends StatelessWidget {
             crossAxisAlignment: CrossAxisAlignment.start,
             mainAxisSize: MainAxisSize.min,
             children: [
-              Text.rich(
-                TextSpan(
-                  text: '혼자가 아니에요.\n',
-                  style: const TextStyle(
-                    fontSize: 17,
+              LayoutBuilder(
+                builder: (context, constraints) {
+                  final fs = _homeSummaryFitFontSize(context, constraints.maxWidth, total);
+                  final baseStyle = TextStyle(
+                    fontSize: fs,
                     height: 1.8,
                     color: Colors.white,
                     fontFamily: 'NotoSerifKR',
                     fontWeight: FontWeight.w400,
-                  ),
-                  children: [
-                    const TextSpan(
-                      text: '당신을 향한 기도가 ',
-                    ),
-                    TextSpan(
-                      text: '$total번',
-                      style: const TextStyle(
-                        color: Color(0xFFFFD966),
-                        fontWeight: FontWeight.w700,
+                  );
+                  return Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text('혼자가 아니에요.', style: baseStyle),
+                      Text.rich(
+                        TextSpan(
+                          style: baseStyle,
+                          children: [
+                            const TextSpan(text: '당신을 향한 기도가 '),
+                            TextSpan(
+                              text: '$total번',
+                              style: TextStyle(
+                                color: const Color(0xFFFFD966),
+                                fontWeight: FontWeight.w700,
+                                fontSize: fs,
+                                height: 1.8,
+                                fontFamily: 'NotoSerifKR',
+                              ),
+                            ),
+                            const TextSpan(text: ' 쌓이고 있어요.'),
+                          ],
+                        ),
+                        maxLines: 1,
+                        softWrap: false,
+                        overflow: TextOverflow.clip,
                       ),
-                    ),
-                    const TextSpan(
-                      text: ' 쌓이고 있어요.',
-                    ),
-                  ],
-                ),
+                    ],
+                  );
+                },
               ),
               const SizedBox(height: 12),
               Align(

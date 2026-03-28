@@ -354,8 +354,8 @@ class _ProfilePageState extends State<ProfilePage> {
               },
               child: SingleChildScrollView(
                 physics: const AlwaysScrollableScrollPhysics(),
-                padding: const EdgeInsets.only(
-                  top: AppBanner.totalHeight + 8,
+                padding: EdgeInsets.only(
+                  top: AppBanner.totalHeightFor(context) + 8,
                   left: 0,
                   right: 0,
                   bottom: 40,
@@ -1331,8 +1331,8 @@ class _StatsPageState extends State<StatsPage> {
               },
               child: SingleChildScrollView(
                 physics: const AlwaysScrollableScrollPhysics(),
-                padding: const EdgeInsets.only(
-                  top: AppBanner.totalHeight + 8,
+                padding: EdgeInsets.only(
+                  top: AppBanner.totalHeightFor(context) + 8,
                   left: 0,
                   right: 0,
                   bottom: 40,

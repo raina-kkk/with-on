@@ -30,6 +30,8 @@ class AppBanner extends StatelessWidget implements PreferredSizeWidget {
   static const double bannerHeight = 58;
   /// 하단 반투명 그라데이션 구간 (스텝 많게 해서 부드럽게)
   static const double gradientTailHeight = 24;
+  /// 상태바를 제외한 배너+꼬리 높이. Stack 본문 `top`/`padding`에는 사용하지 말고
+  /// [totalHeightFor]를 쓰세요(기기별 상태바 높이 포함).
   static const double totalHeight = bannerHeight + gradientTailHeight;
 
   @override

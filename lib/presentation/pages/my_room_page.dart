@@ -1054,7 +1054,7 @@ class _MyRoomPageState extends State<MyRoomPage> {
       body: Stack(
         children: [
           Positioned(
-            top: AppBanner.totalHeight,
+            top: AppBanner.totalHeightFor(context),
             left: 0,
             right: 0,
             bottom: 0,

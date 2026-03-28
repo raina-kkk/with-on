@@ -592,7 +592,7 @@ class _GroupPageState extends State<GroupPage> {
       body: Stack(
         children: [
           Positioned(
-            top: AppBanner.totalHeight,
+            top: AppBanner.totalHeightFor(context),
             left: 0,
             right: 0,
             bottom: 0,
