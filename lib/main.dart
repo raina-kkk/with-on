@@ -1,6 +1,7 @@
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
+import 'package:intl/date_symbol_data_local.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'core/theme/app_theme.dart';
@@ -37,6 +38,7 @@ Future<void> main() async {
 
   // 로컬 알림 플러그인 초기화
   await NotificationService.instance.initialize();
+  await initializeDateFormatting('ko_KR');
 
   runApp(const WithOnApp());
 }
@@ -107,6 +109,16 @@ class _WithOnAppState extends State<WithOnApp> {
         theme: AppTheme.lightTheme,
         darkTheme: AppTheme.darkTheme,
         themeMode: _themeMode,
+        // 스플래시 페이드아웃 시 뒤는 Theme(앱 다크 설정)이 아니라 OS 밝기에 맞춘 바탕 — 검정 플래시 완화
+        builder: (context, child) {
+          final content = child ?? const SizedBox.shrink();
+          if (!_showSplash) return content;
+          final bridge = MediaQuery.platformBrightnessOf(context) ==
+                  Brightness.dark
+              ? AppTheme.darkBackground
+              : AppTheme.bgLight;
+          return ColoredBox(color: bridge, child: content);
+        },
         home: _showSplash
             ? AppSplashPage(onCompleted: _handleSplashCompleted)
             : const _AuthGate(),
@@ -138,8 +150,13 @@ class _AuthGateState extends State<_AuthGate> {
       stream: FirebaseAuth.instance.authStateChanges(),
       builder: (context, snapshot) {
         if (snapshot.connectionState == ConnectionState.waiting) {
-          return const Scaffold(
-            body: Center(child: CircularProgressIndicator()),
+          final bridge = MediaQuery.platformBrightnessOf(context) ==
+                  Brightness.dark
+              ? AppTheme.darkBackground
+              : AppTheme.bgLight;
+          return Scaffold(
+            backgroundColor: bridge,
+            body: const SizedBox.expand(),
           );
         }
         if (snapshot.hasData && snapshot.data != null) {

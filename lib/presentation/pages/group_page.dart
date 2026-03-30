@@ -1552,7 +1552,7 @@ class _WeekNavigator extends StatelessWidget {
   }
 }
 
-class _GroupSelector extends StatelessWidget {
+class _GroupSelector extends StatefulWidget {
   const _GroupSelector({
     required this.uid,
     required this.selectedGroupId,
@@ -1568,16 +1568,136 @@ class _GroupSelector extends StatelessWidget {
   final void Function(String groupId)? onSettingsTap;
 
   @override
+  State<_GroupSelector> createState() => _GroupSelectorState();
+}
+
+class _GroupSelectorState extends State<_GroupSelector> {
+  List<QueryDocumentSnapshot<Map<String, dynamic>>> _cachedGroups =
+      const <QueryDocumentSnapshot<Map<String, dynamic>>>[];
+
+  List<QueryDocumentSnapshot<Map<String, dynamic>>> _sortGroups(
+    List<QueryDocumentSnapshot<Map<String, dynamic>>> groups,
+    List<String>? orderedGroupIds,
+  ) {
+    if (orderedGroupIds == null || orderedGroupIds.isEmpty) {
+      return groups;
+    }
+    final idToIndex = {
+      for (var i = 0; i < orderedGroupIds.length; i++) orderedGroupIds[i]: i
+    };
+    return List.from(groups)
+      ..sort(
+        (a, b) =>
+            (idToIndex[a.id] ?? 999).compareTo(idToIndex[b.id] ?? 999),
+      );
+  }
+
+  Widget _buildSelectorRow(
+    BuildContext context,
+    List<QueryDocumentSnapshot<Map<String, dynamic>>> groups,
+  ) {
+    final firstId = groups.first.id;
+    final currentSelectedId = widget.selectedGroupId ?? firstId;
+    if (widget.selectedGroupId == null) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        widget.onGroupChanged(firstId);
+      });
+    }
+
+    final currentName = (groups
+            .firstWhere(
+              (g) => g.id == currentSelectedId,
+              orElse: () => groups.first,
+            )
+            .data()['name'] as String?) ??
+        '이름 없는 기도 그룹';
+
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.center,
+      children: [
+        Expanded(
+          child: GestureDetector(
+            onTap: () async {
+              final selected = await showModalBottomSheet<String>(
+                context: context,
+                isScrollControlled: true,
+                backgroundColor: Colors.transparent,
+                builder: (ctx) {
+                  return _GroupSelectBottomSheet(
+                    groups: groups,
+                    currentSelectedId: currentSelectedId,
+                  );
+                },
+              );
+              if (selected != null && selected != currentSelectedId) {
+                widget.onGroupChanged(selected);
+              }
+            },
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(16),
+              ),
+              child: Row(
+                children: [
+                  Text(
+                    currentName,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(
+                      fontSize: 13,
+                      fontWeight: FontWeight.w600,
+                      color: AppTheme.textDark,
+                    ),
+                  ),
+                  const Spacer(),
+                  const Icon(
+                    Icons.keyboard_arrow_down_rounded,
+                    size: 18,
+                    color: AppTheme.textMedium,
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
+        if (widget.onSettingsTap != null) ...[
+          const SizedBox(width: 4),
+          IconButton(
+            onPressed: () => widget.onSettingsTap!(currentSelectedId),
+            icon: const Icon(Icons.settings_rounded),
+            tooltip: '기도 그룹 설정',
+            style: IconButton.styleFrom(
+              foregroundColor: AppTheme.textMedium,
+              backgroundColor: Colors.white,
+              shape: const CircleBorder(),
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
+              minimumSize: const Size(40, 40),
+              tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+            ),
+          ),
+        ],
+      ],
+    );
+  }
+
+  @override
   Widget build(BuildContext context) {
-    final useOrder = orderedGroupIds != null && orderedGroupIds!.isNotEmpty;
+    final useOrder =
+        widget.orderedGroupIds != null && widget.orderedGroupIds!.isNotEmpty;
     final query = useOrder
         ? FirebaseFirestore.instance
             .collection('groups')
-            .where(FieldPath.documentId, whereIn: orderedGroupIds!.length > 10 ? orderedGroupIds!.take(10).toList() : orderedGroupIds)
+            .where(
+              FieldPath.documentId,
+              whereIn: widget.orderedGroupIds!.length > 10
+                  ? widget.orderedGroupIds!.take(10).toList()
+                  : widget.orderedGroupIds,
+            )
             .snapshots()
         : FirebaseFirestore.instance
             .collection('groups')
-            .where('member_uids', arrayContains: uid)
+            .where('member_uids', arrayContains: widget.uid)
             .snapshots();
 
     return StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
@@ -1593,27 +1713,25 @@ class _GroupSelector extends StatelessWidget {
           );
         }
 
-        if (snapshot.connectionState == ConnectionState.waiting) {
-          return Row(
-            children: const [
-              SizedBox(
-                width: 18,
-                height: 18,
-                child: CircularProgressIndicator(strokeWidth: 2),
-              ),
-              SizedBox(width: 8),
-              Text('기도 그룹을 불러오는 중입니다...'),
-            ],
-          );
+        final liveGroups = snapshot.data?.docs;
+        if (liveGroups != null) {
+          final sorted = _sortGroups(liveGroups, widget.orderedGroupIds);
+          if (sorted.isNotEmpty) {
+            _cachedGroups = sorted;
+            return _buildSelectorRow(context, sorted);
+          }
         }
 
-        var groups = snapshot.data?.docs ?? const <QueryDocumentSnapshot<Map<String, dynamic>>>[];
-        if (useOrder && orderedGroupIds != null) {
-          final idToIndex = {for (var i = 0; i < orderedGroupIds!.length; i++) orderedGroupIds![i]: i};
-          groups = List.from(groups)
-            ..sort((a, b) => (idToIndex[a.id] ?? 999).compareTo(idToIndex[b.id] ?? 999));
+        if (_cachedGroups.isNotEmpty) {
+          // 날짜 이동처럼 상위 위젯만 다시 빌드될 때는 마지막 그룹 목록을 유지해 깜박임을 막는다.
+          return _buildSelectorRow(context, _cachedGroups);
         }
-        if (groups.isEmpty) {
+
+        if (snapshot.connectionState == ConnectionState.waiting) {
+          return const SizedBox.shrink();
+        }
+
+        if (liveGroups != null && liveGroups.isEmpty) {
           return Text(
             '아직 함께하는 기도 그룹이 없습니다.',
             style: Theme.of(context)
@@ -1623,89 +1741,7 @@ class _GroupSelector extends StatelessWidget {
           );
         }
 
-        final firstId = groups.first.id;
-        final currentSelectedId = selectedGroupId ?? firstId;
-        if (selectedGroupId == null) {
-          WidgetsBinding.instance.addPostFrameCallback((_) {
-            onGroupChanged(firstId);
-          });
-        }
-
-        String currentName = (groups.firstWhere(
-          (g) => g.id == currentSelectedId,
-          orElse: () => groups.first,
-        ).data()['name'] as String?) ??
-            '이름 없는 기도 그룹';
-
-        return Row(
-          crossAxisAlignment: CrossAxisAlignment.center,
-          children: [
-            Expanded(
-              child: GestureDetector(
-                onTap: () async {
-                  final selected = await showModalBottomSheet<String>(
-                    context: context,
-                    isScrollControlled: true,
-                    backgroundColor: Colors.transparent,
-                    builder: (ctx) {
-                      return _GroupSelectBottomSheet(
-                        groups: groups,
-                        currentSelectedId: currentSelectedId,
-                      );
-                    },
-                  );
-                  if (selected != null && selected != currentSelectedId) {
-                    onGroupChanged(selected);
-                  }
-                },
-                child: Container(
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-                  decoration: BoxDecoration(
-                    color: Colors.white,
-                    borderRadius: BorderRadius.circular(16),
-                  ),
-                  child: Row(
-                    children: [
-                      Text(
-                        currentName,
-                        overflow: TextOverflow.ellipsis,
-                        style: const TextStyle(
-                          fontSize: 13,
-                          fontWeight: FontWeight.w600,
-                          color: AppTheme.textDark,
-                        ),
-                      ),
-                      const Spacer(),
-                      const Icon(
-                        Icons.keyboard_arrow_down_rounded,
-                        size: 18,
-                        color: AppTheme.textMedium,
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-            ),
-            if (onSettingsTap != null) ...[
-              const SizedBox(width: 4),
-              IconButton(
-                onPressed: () => onSettingsTap!(currentSelectedId),
-                icon: const Icon(Icons.settings_rounded),
-                tooltip: '기도 그룹 설정',
-                style: IconButton.styleFrom(
-                  foregroundColor: AppTheme.textMedium,
-                  backgroundColor: Colors.white,
-                  shape: const CircleBorder(),
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
-                  minimumSize: const Size(40, 40),
-                  tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                ),
-              ),
-            ],
-          ],
-        );
+        return const SizedBox.shrink();
       },
     );
   }

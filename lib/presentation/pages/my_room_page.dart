@@ -1,6 +1,7 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
+import 'package:table_calendar/table_calendar.dart';
 
 import '../../core/theme/app_theme.dart';
 import '../../services/notification_service.dart';
@@ -138,6 +139,7 @@ class _MyRoomPageState extends State<MyRoomPage> {
   /// 알림 탭으로 진입 시 응답 받음만 보기
   PrayerStatus? _statusFilter;
   bool _pendingPayloadHandled = false;
+  Set<DateTime> _prayerMarkedDates = <DateTime>{};
 
   @override
   void initState() {
@@ -215,12 +217,13 @@ class _MyRoomPageState extends State<MyRoomPage> {
       ),
       builder: (context) {
         final bottomInset = MediaQuery.of(context).viewInsets.bottom;
+        final safeBottom = MediaQuery.of(context).viewPadding.bottom;
         return StatefulBuilder(
           builder: (context, setSheetState) {
             return Padding(
               padding: EdgeInsets.only(
                 left: 16, right: 16, top: 20,
-                bottom: bottomInset + 16,
+                bottom: bottomInset + safeBottom + 16,
               ),
               child: Column(
                 mainAxisSize: MainAxisSize.min,
@@ -340,6 +343,7 @@ class _MyRoomPageState extends State<MyRoomPage> {
       ),
       builder: (context) {
         final bottomInset = MediaQuery.of(context).viewInsets.bottom;
+        final safeBottom = MediaQuery.of(context).viewPadding.bottom;
         return StatefulBuilder(
           builder: (context, setSheetState) {
             return Padding(
@@ -347,7 +351,7 @@ class _MyRoomPageState extends State<MyRoomPage> {
                 left: 16,
                 right: 16,
                 top: 20,
-                bottom: bottomInset + 16,
+                bottom: bottomInset + safeBottom + 16,
               ),
               child: SingleChildScrollView(
                 child: Column(
@@ -663,24 +667,16 @@ class _MyRoomPageState extends State<MyRoomPage> {
 
   // ── 날짜 피커 ──────────────────────────────
   Future<void> _openDatePicker() async {
-    final picked = await showDatePicker(
+    final picked = await showModalBottomSheet<DateTime>(
       context: context,
-      initialDate: _selectedDate ?? DateTime.now(),
-      firstDate: DateTime(2020),
-      lastDate: DateTime.now(),
-      builder: (context, child) {
-        return Theme(
-          data: Theme.of(context).copyWith(
-            colorScheme: const ColorScheme.light(
-              primary: AppTheme.primary,
-              onPrimary: Colors.white,
-              surface: AppTheme.bgLight,
-              onSurface: AppTheme.textDark,
-            ),
-          ),
-          child: child!,
-        );
-      },
+      isScrollControlled: true,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      ),
+      builder: (context) => _PrayerDatePickerSheet(
+        initialDate: _selectedDate ?? DateTime.now(),
+        markedDates: _prayerMarkedDates,
+      ),
     );
     if (picked != null && mounted) {
       setState(() => _selectedDate = picked);
@@ -703,13 +699,14 @@ class _MyRoomPageState extends State<MyRoomPage> {
       ),
       builder: (context) {
         final bottomInset = MediaQuery.of(context).viewInsets.bottom;
+        final safeBottom = MediaQuery.of(context).viewPadding.bottom;
         Set<String> tempSelected = Set<String>.from(initialSelected);
         return Padding(
           padding: EdgeInsets.only(
             left: 16,
             right: 16,
             top: 16,
-            bottom: bottomInset + 16,
+            bottom: bottomInset + safeBottom + 16,
           ),
           child: StatefulBuilder(
             builder: (context, setSheetState) {
@@ -1082,6 +1079,9 @@ class _MyRoomPageState extends State<MyRoomPage> {
                 }
 
                 final allDocs = [...(snapshot.data?.docs ?? const [])];
+                _prayerMarkedDates = allDocs
+                    .map((doc) => _toDateOnly(_toDateTime(doc.data()['created_at'])))
+                    .toSet();
                 allDocs.sort((a, b) {
                   final aPinned = (a.data()['is_pinned'] as bool?) ?? false;
                   final bPinned = (b.data()['is_pinned'] as bool?) ?? false;
@@ -1438,8 +1438,9 @@ class _MyRoomPageState extends State<MyRoomPage> {
       shape: const RoundedRectangleBorder(
           borderRadius: BorderRadius.vertical(top: Radius.circular(24))),
       builder: (context) {
+        final safeBottom = MediaQuery.of(context).viewPadding.bottom;
         return Padding(
-          padding: const EdgeInsets.fromLTRB(16, 16, 16, 24),
+          padding: EdgeInsets.fromLTRB(16, 16, 16, safeBottom + 24),
           child: Column(
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -2008,11 +2009,123 @@ DateTime _toDateTime(dynamic value) {
   return DateTime.fromMillisecondsSinceEpoch(0);
 }
 
+DateTime _toDateOnly(DateTime date) => DateTime(date.year, date.month, date.day);
+
 String _formatDate(DateTime date) {
   final y = date.year.toString().padLeft(4, '0');
   final m = date.month.toString().padLeft(2, '0');
   final d = date.day.toString().padLeft(2, '0');
   return '$y.$m.$d';
+}
+
+class _PrayerDatePickerSheet extends StatefulWidget {
+  const _PrayerDatePickerSheet({
+    required this.initialDate,
+    required this.markedDates,
+  });
+
+  final DateTime initialDate;
+  final Set<DateTime> markedDates;
+
+  @override
+  State<_PrayerDatePickerSheet> createState() => _PrayerDatePickerSheetState();
+}
+
+class _PrayerDatePickerSheetState extends State<_PrayerDatePickerSheet> {
+  late DateTime _focusedDay;
+  DateTime? _selectedDay;
+
+  @override
+  void initState() {
+    super.initState();
+    _focusedDay = _toDateOnly(widget.initialDate);
+    _selectedDay = _toDateOnly(widget.initialDate);
+  }
+
+  bool _hasPrayer(DateTime day) => widget.markedDates.contains(_toDateOnly(day));
+
+  @override
+  Widget build(BuildContext context) {
+    final bottomInset = MediaQuery.of(context).viewInsets.bottom;
+    final safeBottom = MediaQuery.of(context).viewPadding.bottom;
+    return Padding(
+      padding: EdgeInsets.fromLTRB(16, 12, 16, bottomInset + safeBottom + 16),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            '날짜 선택',
+            style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                  fontWeight: FontWeight.w700,
+                  color: AppTheme.textDark,
+                ),
+          ),
+          const SizedBox(height: 12),
+          TableCalendar<int>(
+            locale: 'ko_KR',
+            firstDay: DateTime(2020),
+            lastDay: DateTime.now(),
+            focusedDay: _focusedDay,
+            selectedDayPredicate: (day) => isSameDay(day, _selectedDay),
+            onPageChanged: (focusedDay) => _focusedDay = focusedDay,
+            onDaySelected: (selectedDay, focusedDay) {
+              setState(() {
+                _selectedDay = _toDateOnly(selectedDay);
+                _focusedDay = focusedDay;
+              });
+            },
+            eventLoader: (day) => _hasPrayer(day) ? const [1] : const [],
+            headerStyle: const HeaderStyle(
+              titleCentered: true,
+              formatButtonVisible: false,
+            ),
+            calendarStyle: CalendarStyle(
+              todayDecoration: BoxDecoration(
+                shape: BoxShape.circle,
+                border: Border.all(
+                  color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.55),
+                ),
+              ),
+              selectedDecoration: BoxDecoration(
+                shape: BoxShape.circle,
+                color: Theme.of(context).colorScheme.primary,
+              ),
+              markerDecoration: BoxDecoration(
+                shape: BoxShape.circle,
+                color: Theme.of(context).colorScheme.primary,
+              ),
+              markersMaxCount: 1,
+              markerSize: 5.5,
+              outsideDaysVisible: false,
+            ),
+          ),
+          const SizedBox(height: 12),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.end,
+            children: [
+              TextButton(
+                onPressed: () => Navigator.of(context).pop(),
+                child: const Text('취소'),
+              ),
+              const SizedBox(width: 8),
+              TextButton(
+                onPressed: () => Navigator.of(context).pop(DateTime.now()),
+                child: const Text('오늘'),
+              ),
+              const SizedBox(width: 8),
+              ElevatedButton(
+                onPressed: _selectedDay == null
+                    ? null
+                    : () => Navigator.of(context).pop(_selectedDay),
+                child: const Text('적용'),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
 }
 
 // ── 더보기 토글 텍스트 ──────────────────────────

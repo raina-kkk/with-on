@@ -8,8 +8,14 @@ class AppTheme {
   static const Color bgLight = Color(0xFFF2F2F7);
   static const Color bgDeep = Color(0xFFF5F5F5);  // ?? 이건 어디서 사용하는지 확인 필요
 
-  // Primary #F2E6C2 — 주요 텍스트, 타이틀, 메인 버튼 [테마 기본 톤] [텍스트 Color]
+  /// Light UI 브랜드 톤. **반투명** `0x90A67041`(알파 ≈56%) — 아래 깔린 배경과 블렌딩되어
+  /// **실제로 보이는 RGB는 배경마다 달라짐**. Chrome도 `Theme.of(context).primaryColor`로 칠한 영역은
+  /// 밝은 캔버스 위에서 더 옅게 보일 수 있음. **전면 단색(스플래시)** 은 [splashBackground]만 쓸 것.
   static const Color primary = Color(0x90A67041);
+
+  /// 스플래시·OS 스플래시용 **완전 불투명** #A67041 (`0xFFA67041`). [primary]와 값이 비슷해 보여도
+  /// 알파 유무가 달라 **같은 색이 아님**. 웹 `AppTheme.splashBackground`·Android `splash_background`와 동일.
+  static const Color splashBackground = Color(0xFFA67041);
 
   // Secondary #F2E6C2 — 강조 포인트(아이콘, 텍스트 버튼) [리본 버튼 Color]
   static const Color secondary = Color(0x90A67041);

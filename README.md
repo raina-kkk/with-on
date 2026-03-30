@@ -14,3 +14,10 @@ A few resources to get you started if this is your first Flutter project:
 For help getting started with Flutter development, view the
 [online documentation](https://docs.flutter.dev/), which offers tutorials,
 samples, guidance on mobile development, and a full API reference.
+
+## Splash/Icon File Naming
+
+- Launcher icon source: `assets/images/ICON_Light.png`
+- Splash center icon source: `assets/images/SPLASH_ICON_Light.png`
+- After replacing splash icon image, run:
+  - `flutter pub run flutter_native_splash:create`
