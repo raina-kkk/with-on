@@ -27,7 +27,6 @@ const _kStatusChartConfig = <(String, Color)>[
 // ── 통계 데이터 ─────────────────────────────────
 class _PrayerStats {
   const _PrayerStats({
-    required this.thisWeek,
     required this.thisMonth,
     required this.totalAnswered,
     required this.totalAll,
@@ -36,7 +35,6 @@ class _PrayerStats {
     required this.statusCounts,
   });
 
-  final int thisWeek;
   final int thisMonth;
   final int totalAnswered;
   final int totalAll;
@@ -45,7 +43,6 @@ class _PrayerStats {
   final List<int> statusCounts;
 
   static _PrayerStats empty() => const _PrayerStats(
-        thisWeek: 0,
         thisMonth: 0,
         totalAnswered: 0,
         totalAll: 0,
@@ -981,8 +978,8 @@ class _StatsPageState extends State<StatsPage> {
   bool _hasAnyGroup = true;
   List<_TopGroup> _topGroups = const [];
   List<_TopMember> _topMembers = const [];
-  String _hottestWeekdaysText = '';
-  String _hottestTimeText = '';
+  /// 격려 문구용: 이번 주에 작성된 기도 제목 수
+  int _weekNewPrayerCount = 0;
 
   @override
   void initState() {
@@ -1045,7 +1042,7 @@ class _StatsPageState extends State<StatsPage> {
       // 기도 그룹 top 섹션/멤버 top 섹션 계산용
       final Map<String, int> groupHoldTotalByGroupId = <String, int>{};
       final Map<String, int> memberHoldTotalByOwnerUid = <String, int>{};
-      final List<({String prayerId, int holdCount})> last7GroupPrayers = [];
+      final Map<String, String> memberNicknameByUid = <String, String>{};
 
       for (final doc in prayerDocs) {
         final data = doc.data();
@@ -1093,8 +1090,7 @@ class _StatsPageState extends State<StatsPage> {
           .where('held_by_uids', arrayContains: uid)
           .get();
 
-      // 기도 그룹 기도손 클릭 수 집계 (최근 7일/전체/스펙(멤버 top, 기도 그룹 top)에 공통으로 사용)
-      final Set<String> last7PrayerIdsForOwners = <String>{};
+      // 내 참여 집계(총 참여/최근 7일 참여용)
       for (final doc in holdSnap.docs) {
         final data = doc.data();
         final lastHeldAt = _toNullableDateTime(data['last_held_at']);
@@ -1110,18 +1106,6 @@ class _StatsPageState extends State<StatsPage> {
         final dayIndex = heldDay.difference(sevenDaysAgo).inDays;
         if (dayIndex >= 0 && dayIndex <= 6) {
           last7Participation[dayIndex] += holdCount;
-
-          final groupId = (data['group_id'] as String?) ?? '';
-          if (groupId.isNotEmpty) {
-            groupHoldTotalByGroupId[groupId] =
-                (groupHoldTotalByGroupId[groupId] ?? 0) + holdCount;
-          }
-
-          final prayerId = (data['prayer_id'] as String?) ?? '';
-          if (prayerId.isNotEmpty) {
-            last7GroupPrayers.add((prayerId: prayerId, holdCount: holdCount));
-            last7PrayerIdsForOwners.add(prayerId);
-          }
         }
       }
 
@@ -1142,15 +1126,53 @@ class _StatsPageState extends State<StatsPage> {
       final hasAnyGroup = groupIds.isNotEmpty;
 
       final topGroups = <_TopGroup>[];
+      final topMembers = <_TopMember>[];
       if (hasAnyGroup) {
-        final filteredEntries = groupHoldTotalByGroupId.entries
-            .where((e) => groupIds.contains(e.key))
-            .toList()
-          ..sort((a, b) => b.value.compareTo(a.value));
+        // 최근 7일 기준으로, 내가 속한 그룹 전체의 group_prayers를 집계한다.
+        const chunkSize = 10;
+        for (var i = 0; i < groupIds.length; i += chunkSize) {
+          final chunk = groupIds.skip(i).take(chunkSize).toList();
+          final snap = await FirebaseFirestore.instance
+              .collection('group_prayers')
+              .where('group_id', whereIn: chunk)
+              .get();
+          for (final doc in snap.docs) {
+            final data = doc.data();
+            final lastHeldAt = _toNullableDateTime(data['last_held_at']);
+            if (lastHeldAt == null) continue;
+            final heldDay =
+                DateTime(lastHeldAt.year, lastHeldAt.month, lastHeldAt.day);
+            if (heldDay.isBefore(sevenDaysAgo)) continue;
 
-        final top3 = filteredEntries.take(3).toList();
-        for (final e in top3) {
-          final groupSnap = await FirebaseFirestore.instance.collection('groups').doc(e.key).get();
+            final holdCount = (data['hold_count'] as int?) ?? 0;
+            if (holdCount <= 0) continue;
+
+            final groupId = (data['group_id'] as String?) ?? '';
+            if (groupId.isNotEmpty) {
+              groupHoldTotalByGroupId[groupId] =
+                  (groupHoldTotalByGroupId[groupId] ?? 0) + holdCount;
+            }
+
+            final ownerUid = (data['owner_uid'] as String?)?.trim() ?? '';
+            if (ownerUid.isNotEmpty && ownerUid != uid) {
+              final nickname =
+                  (data['owner_nickname'] as String?)?.trim() ??
+                      (data['owner_email'] as String?)?.trim() ??
+                      ownerUid;
+              memberNicknameByUid[ownerUid] = nickname;
+              memberHoldTotalByOwnerUid[ownerUid] =
+                  (memberHoldTotalByOwnerUid[ownerUid] ?? 0) + holdCount;
+            }
+          }
+        }
+
+        final filteredEntries = groupHoldTotalByGroupId.entries.toList()
+          ..sort((a, b) => b.value.compareTo(a.value));
+        for (final e in filteredEntries.take(3)) {
+          final groupSnap = await FirebaseFirestore.instance
+              .collection('groups')
+              .doc(e.key)
+              .get();
           final name = (groupSnap.data()?['name'] as String?)?.trim();
           topGroups.add(_TopGroup(
             groupId: e.key,
@@ -1158,126 +1180,22 @@ class _StatsPageState extends State<StatsPage> {
             totalHoldClicks: e.value,
           ));
         }
-      }
 
-      // 내가 많이 기도한 멤버 top3 준비 (최근 7일 기도 그룹 카드 중 '다른 멤버'의 기도손 클릭 합)
-      final Map<String, ({String ownerUid, String nickname})> prayerIdToOwner = {};
-      if (hasAnyGroup && last7PrayerIdsForOwners.isNotEmpty) {
-        final ids = last7PrayerIdsForOwners.toList();
-        const chunkSize = 10;
-        for (var i = 0; i < ids.length; i += chunkSize) {
-          final chunk = ids.skip(i).take(chunkSize).toList();
-          final snap = await FirebaseFirestore.instance
-              .collection('prayers')
-              .where(FieldPath.documentId, whereIn: chunk)
-              .get();
-          for (final p in snap.docs) {
-            final pData = p.data();
-            final ownerUid = (pData['owner_uid'] as String?)?.trim() ?? '';
-            final nickname = (pData['owner_nickname'] as String?)?.trim() ??
-                (pData['owner_email'] as String?)?.trim() ??
-                '';
-            if (ownerUid.isNotEmpty) {
-              prayerIdToOwner[p.id] = (
-                ownerUid: ownerUid,
-                nickname: (nickname.isNotEmpty ? nickname : ownerUid),
-              );
-            }
-          }
-        }
-
-        for (final item in last7GroupPrayers) {
-          final info = prayerIdToOwner[item.prayerId];
-          final ownerUid = info?.ownerUid ?? '';
-          if (ownerUid.isEmpty || ownerUid == uid) continue;
-          memberHoldTotalByOwnerUid[ownerUid] =
-              (memberHoldTotalByOwnerUid[ownerUid] ?? 0) + item.holdCount;
-        }
-      }
-
-      final topMembers = <_TopMember>[];
-      if (hasAnyGroup) {
-        final sorted = memberHoldTotalByOwnerUid.entries.toList()
+        final sortedMembers = memberHoldTotalByOwnerUid.entries.toList()
           ..sort((a, b) => b.value.compareTo(a.value));
-
-        for (final e in sorted.take(3)) {
-          final nickname = prayerIdToOwner.values
-              .firstWhere(
-                (x) => x.ownerUid == e.key,
-                orElse: () => (ownerUid: '', nickname: ''),
-              )
-              .nickname;
-          // ownerUid만으로도 fallback
+        for (final e in sortedMembers.take(3)) {
           topMembers.add(_TopMember(
             memberUid: e.key,
-            nickname: nickname.isNotEmpty ? nickname : e.key,
+            nickname: memberNicknameByUid[e.key] ?? e.key,
             totalHoldClicks: e.value,
           ));
         }
       }
 
-      // 가장 뜨거운 기도 시간: (요일 + 10분 단위)로 시간대 binning
-      final Map<String, int> binCounts = <String, int>{};
-      final List<DateTime> actionTimes = [];
-
-      for (final doc in prayerDocs) {
-        final data = doc.data();
-        final createdAt = _toDateTime(data['created_at']);
-        actionTimes.add(createdAt);
-
-        final isShared = (data['is_shared'] as bool?) ?? false;
-        if (!isShared) {
-          final personalHoldCount = (data['hold_count'] as int?) ?? 0;
-          final personalClickCount = personalHoldCount > 1 ? personalHoldCount - 1 : 0;
-          final lastHeldAt = _toNullableDateTime(data['last_held_at']);
-          if (personalClickCount > 0 && lastHeldAt != null) {
-            actionTimes.add(lastHeldAt);
-          }
-        }
-      }
-
-      for (final doc in holdSnap.docs) {
-        final data = doc.data();
-        final lastHeldAt = _toNullableDateTime(data['last_held_at']);
-        final holdCount = (data['hold_count'] as int?) ?? 0;
-        if (holdCount > 0 && lastHeldAt != null) {
-          actionTimes.add(lastHeldAt);
-        }
-      }
-
-      const dayLabels = ['월', '화', '수', '목', '금', '토', '일'];
-      for (final t in actionTimes) {
-        final dayLabel = dayLabels[t.weekday - 1];
-        // 1시간 단위로만 binning (분 단위는 버림)
-        final timeLabel = '${t.hour}시';
-        final key = '$dayLabel|$timeLabel';
-        binCounts[key] = (binCounts[key] ?? 0) + 1;
-      }
-
-      String hottestWeekdaysText = '';
-      String hottestTimeText = '';
-      if (binCounts.isNotEmpty) {
-        final maxCount = binCounts.values.reduce((a, b) => a > b ? a : b);
-        final keys = binCounts.entries.where((e) => e.value == maxCount).map((e) => e.key).toList();
-        final weekdays = <String>{};
-        final times = <String>{};
-        for (final k in keys) {
-          final parts = k.split('|');
-          if (parts.length == 2) {
-            weekdays.add(parts[0]);
-            times.add(parts[1]);
-          }
-        }
-        final weekdaysList = weekdays.toList()..sort();
-        hottestWeekdaysText = weekdaysList.join(', ');
-        final timesList = times.toList()..sort();
-        hottestTimeText = timesList.join(', ');
-      }
-
       if (mounted) {
         setState(() {
+          _weekNewPrayerCount = weekCount;
           _stats = _PrayerStats(
-            thisWeek: weekCount,
             thisMonth: monthCount,
             totalAnswered: answeredCount,
             totalAll: prayerDocs.length,
@@ -1290,8 +1208,6 @@ class _StatsPageState extends State<StatsPage> {
           _hasAnyGroup = hasAnyGroup;
           _topGroups = topGroups;
           _topMembers = topMembers;
-          _hottestWeekdaysText = hottestWeekdaysText;
-          _hottestTimeText = hottestTimeText;
         });
       }
     } catch (_) {
@@ -1381,9 +1297,10 @@ class _StatsPageState extends State<StatsPage> {
                         ],
                       ),
                       const SizedBox(height: 14),
-                      // 연속 기도의 등불 (streak)
+                      // 연속 기도의 등불 (streak) — 색 칸은 격려 칸과 동일 높이 구조
                       Container(
                         width: double.infinity,
+                        constraints: const BoxConstraints(minHeight: 52),
                         padding: const EdgeInsets.symmetric(
                           horizontal: 14,
                           vertical: 12,
@@ -1394,7 +1311,7 @@ class _StatsPageState extends State<StatsPage> {
                           borderRadius: BorderRadius.circular(16),
                         ),
                         child: Row(
-                          crossAxisAlignment: CrossAxisAlignment.start,
+                          crossAxisAlignment: CrossAxisAlignment.center,
                           children: [
                             Icon(
                               Icons.local_fire_department_rounded,
@@ -1408,34 +1325,8 @@ class _StatsPageState extends State<StatsPage> {
                                 style: const TextStyle(
                                   fontSize: 13,
                                   color: AppTheme.textDark,
-                                  height: 1.6,
+                                  height: 1.35,
                                 ),
-                              ),
-                            ),
-                            const SizedBox(width: 4),
-                            GestureDetector(
-                              onTap: () {
-                                showDialog<void>(
-                                  context: context,
-                                  builder: (ctx) => AlertDialog(
-                                    shape: RoundedRectangleBorder(
-                                      borderRadius: BorderRadius.circular(20),
-                                    ),
-                                    title: const Text('정보'),
-                                    content: const Text('기도에 참여한 연속 일수입니다.'),
-                                    actions: [
-                                      TextButton(
-                                        onPressed: () => Navigator.of(ctx).pop(),
-                                        child: const Text('확인'),
-                                      ),
-                                    ],
-                                  ),
-                                );
-                              },
-                              child: Icon(
-                                Icons.info_outline_rounded,
-                                size: 16,
-                                color: AppTheme.textMuted.withValues(alpha: 0.6),
                               ),
                             ),
                           ],
@@ -1444,6 +1335,7 @@ class _StatsPageState extends State<StatsPage> {
                       const SizedBox(height: 12),
                       Container(
                         width: double.infinity,
+                        constraints: const BoxConstraints(minHeight: 52),
                         padding: const EdgeInsets.symmetric(
                             horizontal: 14, vertical: 12),
                         decoration: BoxDecoration(
@@ -1454,19 +1346,19 @@ class _StatsPageState extends State<StatsPage> {
                           borderRadius: BorderRadius.circular(16),
                         ),
                         child: Row(
-                          crossAxisAlignment: CrossAxisAlignment.start,
+                          crossAxisAlignment: CrossAxisAlignment.center,
                           children: [
                             const Text('💛',
-                                style: TextStyle(fontSize: 16)),
+                                style: TextStyle(fontSize: 16, height: 1.2)),
                             const SizedBox(width: 8),
                             Expanded(
                               child: Text(
                                 _encouragingMessage(
-                                    stats.thisWeek, stats.totalAnswered),
+                                    _weekNewPrayerCount, stats.totalAnswered),
                                 style: const TextStyle(
                                   fontSize: 13,
                                   color: AppTheme.textDark,
-                                  height: 1.6,
+                                  height: 1.35,
                                 ),
                               ),
                             ),
@@ -1474,52 +1366,70 @@ class _StatsPageState extends State<StatsPage> {
                         ),
                       ),
                       const SizedBox(height: 16),
-                      Row(
-                        children: [
-                          Expanded(
-                            child: _StatChip(
-                              icon: Icons.today_rounded,
-                              label: '이번 주',
-                              value: '${stats.thisWeek}',
-                              unit: '개',
-                              color: _kPeach,
-                            ),
-                          ),
-                          const SizedBox(width: 10),
-                          Expanded(
-                            child: _StatChip(
-                              icon: Icons.calendar_month_rounded,
-                              label: '이번 달',
-                              value: '${stats.thisMonth}',
-                              unit: '개',
-                              color: _kSkyBlue,
-                            ),
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 10),
-                      Row(
-                        children: [
-                          Expanded(
-                            child: _StatChip(
-                              icon: Icons.check_circle_outline_rounded,
-                              label: '응답받음',
-                              value: '${stats.totalAnswered}',
-                              unit: '개',
-                              color: _kSageGreen,
-                            ),
-                          ),
-                          const SizedBox(width: 10),
-                          Expanded(
-                            child: _StatChip(
-                              icon: Icons.pan_tool_outlined,
-                              label: '기도 참여',
-                              value: '${stats.participatedCount}',
-                              unit: '회',
-                              color: _kLavender,
-                            ),
-                          ),
-                        ],
+                      LayoutBuilder(
+                        builder: (context, constraints) {
+                          // 카드 내부 폭이 매우 좁을 때만 1열 (일반 폰은 2×2 유지)
+                          final narrow = constraints.maxWidth < 248;
+                          final gap = narrow ? 8.0 : 10.0;
+                          Widget rowPair(_StatChip a, _StatChip b) {
+                            if (narrow) {
+                              return Column(
+                                crossAxisAlignment: CrossAxisAlignment.stretch,
+                                children: [
+                                  a,
+                                  SizedBox(height: gap),
+                                  b,
+                                ],
+                              );
+                            }
+                            return Row(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Expanded(child: a),
+                                SizedBox(width: gap),
+                                Expanded(child: b),
+                              ],
+                            );
+                          }
+                          return Column(
+                            crossAxisAlignment: CrossAxisAlignment.stretch,
+                            children: [
+                              rowPair(
+                                _StatChip(
+                                  icon: Icons.note_add_rounded,
+                                  label: '기도 기록',
+                                  value: '${stats.totalAll}',
+                                  unit: '개',
+                                  color: _kPeach,
+                                ),
+                                _StatChip(
+                                  icon: Icons.calendar_month_rounded,
+                                  label: '이번 달',
+                                  value: '${stats.thisMonth}',
+                                  unit: '개',
+                                  color: _kSkyBlue,
+                                ),
+                              ),
+                              SizedBox(height: gap),
+                              rowPair(
+                                _StatChip(
+                                  icon: Icons.check_circle_outline_rounded,
+                                  label: '응답받음',
+                                  value: '${stats.totalAnswered}',
+                                  unit: '개',
+                                  color: _kSageGreen,
+                                ),
+                                _StatChip(
+                                  icon: Icons.pan_tool_outlined,
+                                  label: '기도 참여',
+                                  value: '${stats.participatedCount}',
+                                  unit: '회',
+                                  color: _kLavender,
+                                ),
+                              ),
+                            ],
+                          );
+                        },
                       ),
                       const SizedBox(height: 20),
                       const Text(
@@ -1763,49 +1673,6 @@ class _StatsPageState extends State<StatsPage> {
                         ),
                       ),
 
-                      const SizedBox(height: 14),
-                      // 가장 뜨거운 기도 시간
-                      Container(
-                        padding: const EdgeInsets.all(16),
-                        decoration: BoxDecoration(
-                          color: Theme.of(context)
-                              .colorScheme
-                              .primary
-                              .withValues(alpha: 0.05),
-                          borderRadius: BorderRadius.circular(16),
-                          border: Border.all(
-                            color: Theme.of(context)
-                                .colorScheme
-                                .primary
-                                .withValues(alpha: 0.12),
-                          ),
-                        ),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            const Text(
-                              '가장 뜨거운 기도 시간',
-                              style: TextStyle(
-                                fontSize: 12,
-                                color: AppTheme.textLight,
-                                fontWeight: FontWeight.w700,
-                              ),
-                            ),
-                            const SizedBox(height: 10),
-                            Text(
-                              (_hottestWeekdaysText.isNotEmpty &&
-                                      _hottestTimeText.isNotEmpty)
-                                  ? '$_hottestWeekdaysText · $_hottestTimeText'
-                                  : '아직 충분한 데이터가 없어요.',
-                              style: TextStyle(
-                                fontSize: 13,
-                                color: AppTheme.textMedium,
-                                height: 1.5,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
                     ],
                   ),
                 ),
@@ -1851,48 +1718,68 @@ class _StatChip extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 8),
       decoration: BoxDecoration(
         color: color.withValues(alpha: 0.1),
         borderRadius: BorderRadius.circular(16),
         border: Border.all(color: color.withValues(alpha: 0.2)),
       ),
-      child: Row(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        mainAxisSize: MainAxisSize.min,
         children: [
-          Icon(icon, size: 18, color: color),
-          const SizedBox(width: 8),
-          Expanded(
-            child: Text(
-              label,
-              style: const TextStyle(fontSize: 11, color: AppTheme.textLight),
-            ),
-          ),
           Row(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.end,
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text(
-                value,
-                style: TextStyle(
-                  fontSize: 24,
-                  fontWeight: FontWeight.w700,
-                  color: color,
-                  height: 1,
-                ),
-              ),
-              const SizedBox(width: 2),
-              Padding(
-                padding: const EdgeInsets.only(bottom: 3),
+              Icon(icon, size: 16, color: color),
+              const SizedBox(width: 4),
+              Expanded(
                 child: Text(
-                  unit,
-                  style: TextStyle(
-                    fontSize: 12,
-                    color: color.withValues(alpha: 0.8),
-                    fontWeight: FontWeight.w600,
+                  label,
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(
+                    fontSize: 11,
+                    color: AppTheme.textLight,
+                    height: 1.25,
                   ),
                 ),
               ),
             ],
+          ),
+          const SizedBox(height: 6),
+          Align(
+            alignment: Alignment.centerRight,
+            child: FittedBox(
+              fit: BoxFit.scaleDown,
+              alignment: Alignment.centerRight,
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.baseline,
+                textBaseline: TextBaseline.alphabetic,
+                children: [
+                  Text(
+                    value,
+                    style: TextStyle(
+                      fontSize: 20,
+                      fontWeight: FontWeight.w700,
+                      color: color,
+                      height: 1,
+                      letterSpacing: 0.2,
+                    ),
+                  ),
+                  const SizedBox(width: 4),
+                  Text(
+                    unit,
+                    style: TextStyle(
+                      fontSize: 11,
+                      color: color.withValues(alpha: 0.85),
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ],
+              ),
+            ),
           ),
         ],
       ),

@@ -134,6 +134,7 @@ class MyRoomPage extends StatefulWidget {
 class _MyRoomPageState extends State<MyRoomPage> {
   bool _isSaving = false;
   String _searchQuery = '';
+  int _monthOffset = 0;
   DateTime? _selectedDate;
   final _searchController = TextEditingController();
   /// 알림 탭으로 진입 시 응답 받음만 보기
@@ -665,7 +666,17 @@ class _MyRoomPageState extends State<MyRoomPage> {
     }
   }
 
-  // ── 날짜 피커 ──────────────────────────────
+  DateTime get _visibleMonthStart {
+    final now = DateTime.now();
+    return DateTime(now.year, now.month + _monthOffset, 1);
+  }
+
+  String _monthLabel(DateTime monthStart) {
+    final y = monthStart.year.toString();
+    final m = monthStart.month.toString().padLeft(2, '0');
+    return '$y년 $m월';
+  }
+
   Future<void> _openDatePicker() async {
     final picked = await showModalBottomSheet<DateTime>(
       context: context,
@@ -834,7 +845,7 @@ class _MyRoomPageState extends State<MyRoomPage> {
         crossAxisAlignment: CrossAxisAlignment.start,
         mainAxisSize: MainAxisSize.min,
         children: [
-          // [검색창, 날짜선택] — HTML 컨셉: 흰 배경, stone border, rounded-16
+          // [검색창] — HTML 컨셉: 흰 배경, stone border, rounded-16
           Container(
             height: 48,
             decoration: BoxDecoration(
@@ -885,7 +896,6 @@ class _MyRoomPageState extends State<MyRoomPage> {
                   ),
                 ),
                 const SizedBox(width: 4),
-                // 날짜 필터 버튼
                 GestureDetector(
                   onTap: _openDatePicker,
                   child: AnimatedContainer(
@@ -894,21 +904,29 @@ class _MyRoomPageState extends State<MyRoomPage> {
                         horizontal: 12, vertical: 10),
                     decoration: BoxDecoration(
                       color: _selectedDate != null
-                          ? Theme.of(context).colorScheme.primary.withValues(alpha: 0.15)
+                          ? Theme.of(context)
+                              .colorScheme
+                              .primary
+                              .withValues(alpha: 0.15)
                           : Colors.transparent,
                       borderRadius: BorderRadius.circular(16),
                       border: _selectedDate != null
-                          ? Border.all(color: Theme.of(context).colorScheme.primary, width: 1.2)
+                          ? Border.all(
+                              color: Theme.of(context).colorScheme.primary,
+                              width: 1.2,
+                            )
                           : null,
                     ),
                     child: Row(
                       mainAxisSize: MainAxisSize.min,
                       children: [
-                        Icon(Icons.calendar_month_rounded,
-                            size: 18,
-                            color: _selectedDate != null
-                                ? Theme.of(context).colorScheme.primary
-                                : AppTheme.textMedium),
+                        Icon(
+                          Icons.calendar_month_rounded,
+                          size: 18,
+                          color: _selectedDate != null
+                              ? Theme.of(context).colorScheme.primary
+                              : AppTheme.textMedium,
+                        ),
                         if (_selectedDate != null) ...[
                           const SizedBox(width: 5),
                           Text(
@@ -923,19 +941,26 @@ class _MyRoomPageState extends State<MyRoomPage> {
                           ),
                           const SizedBox(width: 4),
                           GestureDetector(
-                            onTap: () =>
-                                setState(() => _selectedDate = null),
-                            child: Icon(Icons.close_rounded,
-                                size: 14, color: Theme.of(context).colorScheme.primary),
+                            onTap: () => setState(() => _selectedDate = null),
+                            child: Icon(
+                              Icons.close_rounded,
+                              size: 14,
+                              color: Theme.of(context).colorScheme.primary,
+                            ),
                           ),
                         ],
                       ],
                     ),
                   ),
                 ),
-                const SizedBox(width: 8),
               ],
             ),
+          ),
+          const SizedBox(height: 10),
+          _MonthNavigator(
+            monthOffset: _monthOffset,
+            onPrev: () => setState(() => _monthOffset--),
+            onNext: _monthOffset < 0 ? () => setState(() => _monthOffset++) : null,
           ),
           // 상태 필터 칩 — 가로 스크롤, 스크롤바 숨김
           const SizedBox(height: 10),
@@ -1009,11 +1034,11 @@ class _MyRoomPageState extends State<MyRoomPage> {
   }
 
   String _buildFilterLabel() {
-    final parts = <String>[];
+    final parts = <String>[_monthLabel(_visibleMonthStart)];
     if (_statusFilter != null) parts.add(_statusFilter!.label);
     if (_searchQuery.isNotEmpty) parts.add('"$_searchQuery"');
     if (_selectedDate != null) parts.add(_formatDate(_selectedDate!));
-    return parts.isEmpty ? '' : '${parts.join(' · ')} ${parts.length == 1 && _statusFilter != null ? '보기' : '검색 중'}';
+    return '${parts.join(' · ')} 검색 중';
   }
 
   // ── 기도 그룹 새 글 알림 (종 모양) ─────────────────
@@ -1096,9 +1121,17 @@ class _MyRoomPageState extends State<MyRoomPage> {
                   return bTime.compareTo(aTime);
                 });
 
-                // 상태 필터 + 검색어 + 날짜 필터링
+                // 월 + 상태 필터 + 검색어 필터링
                 final docs = allDocs.where((doc) {
                   final data = doc.data();
+                  final created = _toDateTime(data['created_at']);
+                  final monthStart = _visibleMonthStart;
+                  final nextMonthStart =
+                      DateTime(monthStart.year, monthStart.month + 1, 1);
+                  if (created.isBefore(monthStart) ||
+                      !created.isBefore(nextMonthStart)) {
+                    return false;
+                  }
                   if (_statusFilter != null) {
                     final status = data['status'] as String?;
                     if (status != _statusFilter!.key) return false;
@@ -1114,28 +1147,20 @@ class _MyRoomPageState extends State<MyRoomPage> {
                     }
                   }
                   if (_selectedDate != null) {
-                    final created = _toDateTime(data['created_at']);
                     final d = _selectedDate!;
-                    // 해당 날짜가 속한 주(일~토)의 시작·끝
                     final startOfWeek = DateTime(d.year, d.month, d.day)
                         .subtract(Duration(days: d.weekday % 7));
-                    final endOfWeek =
-                        startOfWeek.add(const Duration(days: 6));
+                    final endOfWeek = startOfWeek.add(const Duration(days: 6));
                     final createdDate =
                         DateTime(created.year, created.month, created.day);
-                    final startDate = DateTime(startOfWeek.year,
-                        startOfWeek.month, startOfWeek.day);
-                    final endDate =
-                        DateTime(endOfWeek.year, endOfWeek.month, endOfWeek.day);
-                    if (createdDate.isBefore(startDate) ||
-                        createdDate.isAfter(endDate)) {
+                    if (createdDate.isBefore(startOfWeek) ||
+                        createdDate.isAfter(endOfWeek)) {
                       return false;
                     }
                   }
                   return true;
                 }).toList();
 
-                // 날짜 선택 검색 시: 날짜·시간 순(오래된 것 먼저). 그 외에는 이미 최신순 유지
                 if (_selectedDate != null && docs.isNotEmpty) {
                   docs.sort((a, b) {
                     final aPinned = (a.data()['is_pinned'] as bool?) ?? false;
@@ -1213,7 +1238,7 @@ class _MyRoomPageState extends State<MyRoomPage> {
                           ),
                           const SizedBox(height: 8),
                           Text(
-                            '검색어나 날짜를 조금 바꿔\n다시 찾아보시면 어떨까요?',
+                            '검색어나 월을 조금 바꿔\n다시 찾아보시면 어떨까요?',
                             textAlign: TextAlign.center,
                             style: Theme.of(context)
                                 .textTheme
@@ -2121,6 +2146,100 @@ class _PrayerDatePickerSheetState extends State<_PrayerDatePickerSheet> {
                 child: const Text('적용'),
               ),
             ],
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _MonthNavigator extends StatelessWidget {
+  const _MonthNavigator({
+    required this.monthOffset,
+    required this.onPrev,
+    this.onNext,
+  });
+
+  final int monthOffset;
+  final VoidCallback onPrev;
+  final VoidCallback? onNext;
+
+  @override
+  Widget build(BuildContext context) {
+    final now = DateTime.now();
+    final monthStart = DateTime(now.year, now.month + monthOffset, 1);
+    final label =
+        '${monthStart.year}년 ${monthStart.month.toString().padLeft(2, '0')}월';
+    final isCurrentMonth = monthOffset == 0;
+
+    return Container(
+      height: 48,
+      decoration: BoxDecoration(
+        color: Theme.of(context).scaffoldBackgroundColor,
+        borderRadius: BorderRadius.circular(16),
+      ),
+      padding: const EdgeInsets.symmetric(horizontal: 4),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        crossAxisAlignment: CrossAxisAlignment.center,
+        children: [
+          IconButton(
+            onPressed: onPrev,
+            icon: const Icon(Icons.chevron_left_rounded),
+            tooltip: '이전 달',
+            color: AppTheme.textDark,
+            style: IconButton.styleFrom(
+              minimumSize: Size.zero,
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 10),
+              tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+            ),
+          ),
+          Column(
+            mainAxisSize: MainAxisSize.min,
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Text(
+                label,
+                style: Theme.of(context).textTheme.labelMedium?.copyWith(
+                      color: AppTheme.textDark,
+                      fontWeight: FontWeight.w600,
+                    ),
+              ),
+              if (isCurrentMonth)
+                Padding(
+                  padding: const EdgeInsets.only(top: 2),
+                  child: Container(
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                    decoration: BoxDecoration(
+                      color:
+                          Theme.of(context).colorScheme.primary.withValues(alpha: 0.15),
+                      borderRadius: BorderRadius.circular(999),
+                    ),
+                    child: Text(
+                      '이번 달',
+                      style: TextStyle(
+                        fontSize: 10,
+                        fontWeight: FontWeight.w700,
+                        color: Theme.of(context).colorScheme.primary,
+                      ),
+                    ),
+                  ),
+                ),
+            ],
+          ),
+          IconButton(
+            onPressed: onNext,
+            icon: Icon(
+              Icons.chevron_right_rounded,
+              color: onNext != null ? AppTheme.textDark : AppTheme.textMedium,
+            ),
+            tooltip: '다음 달',
+            style: IconButton.styleFrom(
+              minimumSize: Size.zero,
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 10),
+              tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+            ),
           ),
         ],
       ),

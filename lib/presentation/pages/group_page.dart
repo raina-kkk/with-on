@@ -192,11 +192,52 @@ class GroupPage extends StatefulWidget {
 
 class _GroupPageState extends State<GroupPage> {
   String? _selectedGroupId;
+  String? _focusPrayerId;
+  int _focusRequestId = 0;
 
   /// 0 = 이번 주, -1 = 지난 주, 1 = 다음 주
   int _weekOffset = 0;
 
   String? get _uid => FirebaseAuth.instance.currentUser?.uid;
+
+  Future<void> focusPrayerFromHome({
+    required String groupId,
+    required String prayerId,
+  }) async {
+    var nextWeekOffset = 0;
+    try {
+      final snap = await FirebaseFirestore.instance
+          .collection('group_prayers')
+          .where('group_id', isEqualTo: groupId)
+          .where('prayer_id', isEqualTo: prayerId)
+          .limit(1)
+          .get();
+      if (snap.docs.isNotEmpty) {
+        final createdRaw = snap.docs.first.data()['created_at'];
+        final created = createdRaw is Timestamp
+            ? createdRaw.toDate()
+            : createdRaw is DateTime
+                ? createdRaw
+                : DateTime.now();
+        DateTime weekStartOf(DateTime dt) {
+          final d = DateTime(dt.year, dt.month, dt.day);
+          final daysFromSunday = d.weekday % 7;
+          return d.subtract(Duration(days: daysFromSunday));
+        }
+        final createdWeek = weekStartOf(created);
+        final currentWeek = weekStartOf(DateTime.now());
+        nextWeekOffset = createdWeek.difference(currentWeek).inDays ~/ 7;
+      }
+    } catch (_) {}
+
+    if (!mounted) return;
+    setState(() {
+      _selectedGroupId = groupId;
+      _weekOffset = nextWeekOffset;
+      _focusPrayerId = prayerId;
+      _focusRequestId++;
+    });
+  }
 
   Future<void> _openCreateGroupSheet() async {
     final uid = _uid;
@@ -723,6 +764,8 @@ class _GroupPageState extends State<GroupPage> {
                               child: _GroupPrayersList(
                                 groupId: _selectedGroupId!,
                                 weekRange: getWeekRange(_weekOffset),
+                                focusPrayerId: _focusPrayerId,
+                                focusRequestId: _focusRequestId,
                               ),
                             ),
                           ],
@@ -1967,19 +2010,67 @@ class _GroupSelectBottomSheetState extends State<_GroupSelectBottomSheet> {
   }
 }
 
-class _GroupPrayersList extends StatelessWidget {
+class _GroupPrayersList extends StatefulWidget {
   const _GroupPrayersList({
     required this.groupId,
     required this.weekRange,
+    required this.focusPrayerId,
+    required this.focusRequestId,
   });
 
   final String groupId;
   final WeekRange weekRange;
+  final String? focusPrayerId;
+  final int focusRequestId;
+
+  @override
+  State<_GroupPrayersList> createState() => _GroupPrayersListState();
+}
+
+class _GroupPrayersListState extends State<_GroupPrayersList> {
+  final ScrollController _scrollController = ScrollController();
+  String? _highlightPrayerId;
+  int _lastHandledFocusRequestId = -1;
 
   DateTime _todt(dynamic v) {
     if (v is Timestamp) return v.toDate();
     if (v is DateTime) return v;
     return DateTime.fromMillisecondsSinceEpoch(0);
+  }
+
+  void _handleFocus(List<QueryDocumentSnapshot<Map<String, dynamic>>> filtered) {
+    if (widget.focusPrayerId == null ||
+        widget.focusPrayerId!.isEmpty ||
+        widget.focusRequestId == _lastHandledFocusRequestId) {
+      return;
+    }
+    _lastHandledFocusRequestId = widget.focusRequestId;
+    final targetIndex = filtered.indexWhere(
+      (doc) => (doc.data()['prayer_id'] as String?) == widget.focusPrayerId,
+    );
+    if (targetIndex < 0) return;
+
+    final estimatedOffset = (targetIndex * 146.0).clamp(0, 1000000).toDouble();
+    WidgetsBinding.instance.addPostFrameCallback((_) async {
+      if (!mounted || !_scrollController.hasClients) return;
+      await _scrollController.animateTo(
+        estimatedOffset,
+        duration: const Duration(milliseconds: 320),
+        curve: Curves.easeOutCubic,
+      );
+      if (!mounted) return;
+      setState(() => _highlightPrayerId = widget.focusPrayerId);
+      Future.delayed(const Duration(milliseconds: 1600), () {
+        if (!mounted) return;
+        setState(() => _highlightPrayerId = null);
+      });
+    });
+  }
+
+  @override
+  void dispose() {
+    _scrollController.dispose();
+    super.dispose();
   }
 
   @override
@@ -1988,7 +2079,7 @@ class _GroupPrayersList extends StatelessWidget {
     return StreamBuilder<DocumentSnapshot<Map<String, dynamic>>>(
       stream: FirebaseFirestore.instance
           .collection('groups')
-          .doc(groupId)
+          .doc(widget.groupId)
           .snapshots(),
       builder: (context, groupSnapshot) {
         final memberUids =
@@ -2000,7 +2091,7 @@ class _GroupPrayersList extends StatelessWidget {
         return StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
           stream: FirebaseFirestore.instance
               .collection('group_prayers')
-              .where('group_id', isEqualTo: groupId)
+              .where('group_id', isEqualTo: widget.groupId)
               .snapshots(),
           builder: (context, snapshot) {
             if (snapshot.hasError) {
@@ -2025,8 +2116,8 @@ class _GroupPrayersList extends StatelessWidget {
             final allDocs = snapshot.data?.docs ?? const [];
             final filtered = allDocs.where((doc) {
               final created = _todt(doc.data()['created_at']);
-              return !created.isBefore(weekRange.start) &&
-                  !created.isAfter(weekRange.end);
+              return !created.isBefore(widget.weekRange.start) &&
+                  !created.isAfter(widget.weekRange.end);
             }).toList();
 
             if (filtered.isEmpty) {
@@ -2052,7 +2143,10 @@ class _GroupPrayersList extends StatelessWidget {
                   .compareTo(_todt(a.data()['created_at']));
             });
 
+            _handleFocus(filtered);
+
             return ListView.separated(
+              controller: _scrollController,
               padding: const EdgeInsets.only(top: 8, bottom: 120),
               itemCount: filtered.length,
               separatorBuilder: (_, _) => const SizedBox(height: 0),
@@ -2072,6 +2166,7 @@ class _GroupPrayersList extends StatelessWidget {
                   currentMemberUids: memberUids,
                   currentUid:
                       FirebaseAuth.instance.currentUser?.uid ?? '',
+                  highlighted: prayerId == _highlightPrayerId,
                 );
               },
             );
@@ -2089,6 +2184,7 @@ class _GroupPrayerTile extends StatelessWidget {
     required this.groupPrayerData,
     required this.currentMemberUids,
     required this.currentUid,
+    this.highlighted = false,
   });
 
   final String prayerId;
@@ -2096,6 +2192,7 @@ class _GroupPrayerTile extends StatelessWidget {
   final Map<String, dynamic> groupPrayerData;
   final Set<String> currentMemberUids;
   final String currentUid;
+  final bool highlighted;
 
   @override
   Widget build(BuildContext context) {
@@ -2134,7 +2231,14 @@ class _GroupPrayerTile extends StatelessWidget {
     return Container(
           margin: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
           padding: const EdgeInsets.all(16),
-          decoration: AppTheme.cardDecorationFor(context),
+          decoration: AppTheme.cardDecorationFor(context).copyWith(
+            border: highlighted
+                ? Border.all(
+                    color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.45),
+                    width: 1.5,
+                  )
+                : null,
+          ),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
@@ -2169,7 +2273,8 @@ class _GroupPrayerTile extends StatelessWidget {
                     ],
                     const Spacer(),
                     GestureDetector(
-                      onTap: () => _toggleGroupPrayerPin(groupPrayerId, isPinned, context),
+                      onTap: () =>
+                          _toggleGroupPrayerPin(groupPrayerId, isPinned, context),
                       child: Padding(
                         padding: const EdgeInsets.all(4),
                         child: Icon(
@@ -2186,7 +2291,7 @@ class _GroupPrayerTile extends StatelessWidget {
                   ],
                 ),
                 if (nickname.isNotEmpty) const SizedBox(height: 6),
-                // 제목 + 상태 칩
+                // 제목
                 Row(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
@@ -2210,10 +2315,29 @@ class _GroupPrayerTile extends StatelessWidget {
                             ?.copyWith(fontWeight: FontWeight.w600),
                       ),
                     ),
-                    const SizedBox(width: 8),
+                  ],
+                ),
+                // 내용
+                if (content.isNotEmpty) ...[
+                  const SizedBox(height: 10),
+                  _ExpandableText(text: content),
+                ],
+                const SizedBox(height: 12),
+                // Bottom: 날짜(좌측) + 상태 배지 + 참여 버튼(우측)
+                Row(
+                  children: [
+                    if (createdAtTime != null)
+                      Text(
+                        _formatDate(createdAtTime),
+                        style: Theme.of(context)
+                            .textTheme
+                            .labelMedium
+                            ?.copyWith(color: AppTheme.textMedium),
+                      ),
+                    const Spacer(),
                     Container(
-                      padding: const EdgeInsets.symmetric(
-                          horizontal: 8, vertical: 2),
+                      padding:
+                          const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
                       decoration: BoxDecoration(
                         color: statusBg,
                         borderRadius: BorderRadius.circular(999),
@@ -2227,25 +2351,7 @@ class _GroupPrayerTile extends StatelessWidget {
                         ),
                       ),
                     ),
-                  ],
-                ),
-                // 내용
-                if (content.isNotEmpty) ...[
-                  const SizedBox(height: 10),
-                  _ExpandableText(text: content),
-                ],
-                const SizedBox(height: 12),
-                Row(
-                  children: [
-                    if (createdAtTime != null)
-                      Text(
-                        _formatDate(createdAtTime),
-                        style: Theme.of(context)
-                            .textTheme
-                            .labelMedium
-                            ?.copyWith(color: AppTheme.textMedium),
-                      ),
-                    const Spacer(),
+                    const SizedBox(width: 8),
                     _HoldPrayerButton(
                       groupPrayerId: groupPrayerId,
                       holdCount: holdCount,

@@ -63,6 +63,7 @@ class HomePage extends StatelessWidget {
     super.key,
     required this.onNavigateToMyPrayer,
     required this.onNavigateToGroup,
+    required this.onNavigateToGroupPrayer,
     required this.onNavigateToProfile,
     this.onNotification,
     this.notificationCount,
@@ -70,6 +71,7 @@ class HomePage extends StatelessWidget {
 
   final VoidCallback onNavigateToMyPrayer;
   final VoidCallback onNavigateToGroup;
+  final void Function(String groupId, String prayerId) onNavigateToGroupPrayer;
   final VoidCallback onNavigateToProfile;
   final VoidCallback? onNotification;
   final int? notificationCount;
@@ -101,6 +103,7 @@ class HomePage extends StatelessWidget {
                   uid: uid,
                   onNavigateToMyPrayer: onNavigateToMyPrayer,
                   onNavigateToGroup: onNavigateToGroup,
+                  onNavigateToGroupPrayer: onNavigateToGroupPrayer,
                 ),
               ),
             ),
@@ -113,11 +116,13 @@ class _HomeBody extends StatelessWidget {
     required this.uid,
     required this.onNavigateToMyPrayer,
     required this.onNavigateToGroup,
+    required this.onNavigateToGroupPrayer,
   });
 
   final String uid;
   final VoidCallback onNavigateToMyPrayer;
   final VoidCallback onNavigateToGroup;
+  final void Function(String groupId, String prayerId) onNavigateToGroupPrayer;
 
   @override
   Widget build(BuildContext context) {
@@ -130,7 +135,11 @@ class _HomeBody extends StatelessWidget {
         const SizedBox(height: 30),
         _MyPrayerCarousel(uid: uid, onSeeAll: onNavigateToMyPrayer),
         const SizedBox(height: 30),
-        _GroupPrayerCarousel(uid: uid, onSeeAll: onNavigateToGroup),
+        _GroupPrayerCarousel(
+          uid: uid,
+          onSeeAll: onNavigateToGroup,
+          onOpenPrayer: onNavigateToGroupPrayer,
+        ),
         const SizedBox(height: 30),
       ],
     );
@@ -332,14 +341,6 @@ class _SectionHeader extends StatelessWidget {
       ),
     );
   }
-}
-
-String _formatTimeAgo(DateTime date) {
-  final diff = DateTime.now().difference(date);
-  if (diff.inDays > 0) return '${diff.inDays}일 전';
-  if (diff.inHours > 0) return '${diff.inHours}시간 전';
-  if (diff.inMinutes > 0) return '${diff.inMinutes}분 전';
-  return '방금 전';
 }
 
 class _MyPrayerCarousel extends StatelessWidget {
@@ -557,7 +558,7 @@ class _MyPrayerCarouselPagedState extends State<_MyPrayerCarouselPaged> {
               final created = createdAt is Timestamp
                   ? createdAt.toDate()
                   : (createdAt is DateTime ? createdAt : null);
-              final timeAgo = created != null ? _formatTimeAgo(created) : '';
+              final holdCount = (data['hold_count'] as int?) ?? 0;
               final daysSinceCreated = created != null
                   ? (DateTime.now().difference(DateTime(created.year, created.month, created.day)).inDays + 1).clamp(1, 999)
                   : 1;
@@ -592,12 +593,24 @@ class _MyPrayerCarouselPagedState extends State<_MyPrayerCarouselPaged> {
                               color: Theme.of(context).colorScheme.primary,
                             ),
                           ),
-                          Text(
-                            timeAgo,
-                            style: TextStyle(
-                              fontSize: 10,
-                              color: AppTheme.textLight.withValues(alpha: 0.7),
-                            ),
+                          Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Icon(
+                                Icons.pan_tool_outlined,
+                                size: 13,
+                                color: Theme.of(context).colorScheme.primary,
+                              ),
+                              const SizedBox(width: 3),
+                              Text(
+                                '$holdCount',
+                                style: TextStyle(
+                                  fontSize: 11,
+                                  fontWeight: FontWeight.w700,
+                                  color: Theme.of(context).colorScheme.primary,
+                                ),
+                              ),
+                            ],
                           ),
                         ],
                       ),
@@ -638,10 +651,15 @@ class _MyPrayerCarouselPagedState extends State<_MyPrayerCarouselPaged> {
 }
 
 class _GroupPrayerCarousel extends StatelessWidget {
-  const _GroupPrayerCarousel({required this.uid, required this.onSeeAll});
+  const _GroupPrayerCarousel({
+    required this.uid,
+    required this.onSeeAll,
+    required this.onOpenPrayer,
+  });
 
   final String uid;
   final VoidCallback onSeeAll;
+  final void Function(String groupId, String prayerId) onOpenPrayer;
 
   @override
   Widget build(BuildContext context) {
@@ -656,7 +674,10 @@ class _GroupPrayerCarousel extends StatelessWidget {
                 .toList() ??
             [];
         if (groupIds.isEmpty) {
-          return _emptySection(context);
+          return _emptySection(
+            context,
+            message: '그룹에 공유된 중보 기도 제목이 없습니다.',
+          );
         }
         return StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
           stream: FirebaseFirestore.instance
@@ -664,9 +685,18 @@ class _GroupPrayerCarousel extends StatelessWidget {
               .where('group_id', whereIn: groupIds.length > 10 ? groupIds.take(10).toList() : groupIds)
               .snapshots(),
           builder: (context, snapshot) {
-            if (snapshot.hasError) return _emptySection(context);
+            if (snapshot.hasError) {
+              return _emptySection(
+                context,
+                message: '그룹에 공유된 중보 기도 제목이 없습니다.',
+              );
+            }
             final allDocs = snapshot.data?.docs ?? [];
-            final sorted = List<QueryDocumentSnapshot<Map<String, dynamic>>>.from(allDocs)
+            final othersOnly = allDocs.where((doc) {
+              final ownerUid = (doc.data()['owner_uid'] as String?) ?? '';
+              return ownerUid != uid;
+            }).toList();
+            final sorted = List<QueryDocumentSnapshot<Map<String, dynamic>>>.from(othersOnly)
               ..sort((a, b) {
                 final aAt = a.data()['created_at'];
                 final bAt = b.data()['created_at'];
@@ -675,15 +705,27 @@ class _GroupPrayerCarousel extends StatelessWidget {
                 return bDt.compareTo(aDt);
               });
             final top5 = sorted.take(5).toList();
-            if (top5.isEmpty) return _emptySection(context);
-            return _GroupPrayerCarouselPaged(top5: top5, onSeeAll: onSeeAll);
+            if (top5.isEmpty) {
+              return _emptySection(
+                context,
+                message: '그룹에 공유된 중보 기도 제목이 없습니다.',
+              );
+            }
+            return _GroupPrayerCarouselPaged(
+              top5: top5,
+              onSeeAll: onSeeAll,
+              onOpenPrayer: onOpenPrayer,
+            );
           },
         );
       },
     );
   }
 
-  Widget _emptySection(BuildContext context) {
+  Widget _emptySection(
+    BuildContext context, {
+    required String message,
+  }) {
     return Column(
       mainAxisSize: MainAxisSize.min,
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -700,7 +742,7 @@ class _GroupPrayerCarousel extends StatelessWidget {
           decoration: AppTheme.cardDecorationFor(context),
           alignment: Alignment.center,
           child: Text(
-            '기도 그룹에 참여하면\n함께 나눈 기도 제목을 볼 수 있어요.',
+            message,
             textAlign: TextAlign.center,
             style: TextStyle(fontSize: 14, color: AppTheme.textMedium),
           ),
@@ -714,10 +756,12 @@ class _GroupPrayerCarouselPaged extends StatefulWidget {
   const _GroupPrayerCarouselPaged({
     required this.top5,
     required this.onSeeAll,
+    required this.onOpenPrayer,
   });
 
   final List<QueryDocumentSnapshot<Map<String, dynamic>>> top5;
   final VoidCallback onSeeAll;
+  final void Function(String groupId, String prayerId) onOpenPrayer;
 
   @override
   State<_GroupPrayerCarouselPaged> createState() => _GroupPrayerCarouselPagedState();
@@ -824,6 +868,7 @@ class _GroupPrayerCarouselPagedState extends State<_GroupPrayerCarouselPaged> {
                 prayerId: prayerId,
                 groupId: groupId,
                 holdCount: holdCount,
+                onOpenPrayer: widget.onOpenPrayer,
               );
             },
           ),
@@ -863,11 +908,13 @@ class _GroupPrayerCard extends StatelessWidget {
     required this.prayerId,
     required this.groupId,
     required this.holdCount,
+    required this.onOpenPrayer,
   });
 
   final String prayerId;
   final String groupId;
   final int holdCount;
+  final void Function(String groupId, String prayerId) onOpenPrayer;
 
   @override
   Widget build(BuildContext context) {
@@ -937,7 +984,10 @@ class _GroupPrayerCard extends StatelessWidget {
               SizedBox(
                 width: double.infinity,
                 child: TextButton(
-                  onPressed: () {},
+                  onPressed: () {
+                    if (groupId.isEmpty || prayerId.isEmpty) return;
+                    onOpenPrayer(groupId, prayerId);
+                  },
                   style: TextButton.styleFrom(
                     backgroundColor: AppTheme.bgDeep,
                     foregroundColor: AppTheme.textMedium,

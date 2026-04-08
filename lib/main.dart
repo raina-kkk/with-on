@@ -180,6 +180,7 @@ class MainScaffold extends StatefulWidget {
 class _MainScaffoldState extends State<MainScaffold> {
   int _currentIndex = 0;
   final ValueNotifier<VoidCallback?> _openAddPrayerNotifier = ValueNotifier<VoidCallback?>(null);
+  final GlobalKey _groupPageKey = GlobalKey();
 
   late final List<Widget> _pages;
 
@@ -190,6 +191,7 @@ class _MainScaffoldState extends State<MainScaffold> {
       HomePage(
         onNavigateToMyPrayer: () => setState(() => _currentIndex = 1),
         onNavigateToGroup: () => setState(() => _currentIndex = 3),
+        onNavigateToGroupPrayer: _openGroupPrayerFromHome,
         onNavigateToProfile: _openProfilePage,
         onNotification: _openNotificationsFromHome,
         notificationCount: null, // TODO: stream from notification count
@@ -200,6 +202,7 @@ class _MainScaffoldState extends State<MainScaffold> {
       ),
       const SizedBox.shrink(), // center + only
       GroupPage(
+        key: _groupPageKey,
         onNotification: _openNotificationsFromHome,
         onProfile: _openProfilePage,
         notificationCount: null,
@@ -253,6 +256,18 @@ class _MainScaffoldState extends State<MainScaffold> {
   void _onCenterTap() {
     _openAddPrayerNotifier.value?.call();
     setState(() => _currentIndex = 1);
+  }
+
+  void _openGroupPrayerFromHome(String groupId, String prayerId) {
+    setState(() => _currentIndex = 3);
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      final state = _groupPageKey.currentState;
+      if (state == null) return;
+      (state as dynamic).focusPrayerFromHome(
+        groupId: groupId,
+        prayerId: prayerId,
+      );
+    });
   }
 
   @override
